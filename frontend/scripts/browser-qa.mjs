@@ -1,0 +1,61 @@
+import { chromium } from '@playwright/test';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const root=resolve('..');
+const output=resolve(root,'.local','qa');mkdirSync(output,{recursive:true});
+const browser=await chromium.launch({headless:true,channel:'msedge'});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+const failures=[];page.on('response',r=>{if(r.status()>=400)failures.push({status:r.status(),url:r.url().split('?')[0]});});
+const results={};
+const testTitle='Техническая проверка транскрипции '+Date.now();
+try{
+  await page.goto('http://127.0.0.1:8000');
+  await page.getByLabel('Код доступа',{exact:true}).fill(readFileSync(resolve(root,'.local','INITIAL-ACCESS.txt'),'utf8').split('\n')[1].trim());
+  await page.getByRole('button',{name:'Открыть архив',exact:true}).click();
+  await page.getByRole('heading',{name:'Ваш семейный архив'}).waitFor();
+  await page.screenshot({path:resolve(output,'dashboard-desktop.png'),fullPage:true});
+  await page.getByRole('link',{name:'Архив',exact:true}).click();
+  await page.getByLabel('Поиск дела').fill('Д. 98');
+  await page.getByRole('link',{name:'Дело № 98',exact:true}).first().click();
+  await page.waitForFunction(()=>document.querySelector('.osd canvas')?.width>0);
+  await page.waitForFunction(()=>!document.querySelector('.scan-loading'));
+  await page.screenshot({path:resolve(output,'viewer-desktop.png'),fullPage:true});
+  const originalMetrics=await page.locator('.viewer-footer').innerText();
+  await page.getByLabel('Выделить вырезку',{exact:true}).click();
+  const stage=await page.locator('.scan-stage').boundingBox();
+  await page.mouse.move(stage.x+stage.width*.35,stage.y+stage.height*.35);await page.mouse.down();await page.mouse.move(stage.x+stage.width*.62,stage.y+stage.height*.58,{steps:12});await page.mouse.up();
+  await page.getByText('Выделенный фрагмент',{exact:true}).waitFor({timeout:10000});
+  results.selection=await page.locator('.selection-data .mono').innerText();
+  await page.getByRole('button',{name:'Сравнить фрагмент'}).click();
+  await page.locator('.comparison-grid img').waitFor();
+  await page.screenshot({path:resolve(output,'viewer-selection.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(500);
+  await page.screenshot({path:resolve(output,'viewer-mobile.png'),fullPage:true});
+  results.mobileOverflow=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth);
+  results.originalMetrics=originalMetrics;
+  // Separate synthetic instance for write/review tests.
+  await page.setViewportSize({width:1440,height:1000});
+  await page.goto('http://127.0.0.1:8001');
+  await page.getByLabel('Код доступа',{exact:true}).fill('technical-ui-test-only');
+  await page.getByRole('button',{name:'Открыть архив',exact:true}).click();
+  await page.getByRole('heading',{name:'Ваш семейный архив'}).waitFor();
+  await page.getByRole('link',{name:'Архив',exact:true}).click();
+  await page.locator('a.case-title').first().click();
+  await page.waitForFunction(()=>!document.querySelector('.scan-loading'));
+  await page.getByRole('button',{name:'Добавить транскрипцию',exact:true}).click();
+  await page.getByLabel('Название',{exact:true}).fill(testTitle);
+  await page.getByLabel('Дословная транскрипция',{exact:true}).fill('TECHNICAL TEST IMAGE — проверка сохранения');
+  await page.getByRole('button',{name:'Сохранить предложение',exact:true}).click();
+  await page.getByRole('link',{name:new RegExp(testTitle)}).click();
+  await page.getByRole('heading',{name:testTitle,exact:true}).waitFor();
+  await page.getByLabel('Комментарий проверки').fill('Проверено по техническому изображению');
+  await page.getByRole('button',{name:'Прочтение проверено',exact:true}).click();
+  await page.getByText('Проверено человеком',{exact:true}).waitFor();
+  results.writeAndReview='passed';
+  await page.screenshot({path:resolve(output,'review-fixture.png'),fullPage:true});
+  results.errors=errors;results.failedRequests=failures;results.status='passed';
+  if(errors.length||failures.length||results.mobileOverflow)throw new Error(JSON.stringify(results));
+}catch(e){results.status='failed';results.error=String(e);await page.screenshot({path:resolve(output,'failure.png'),fullPage:true});throw e;}
+finally{writeFileSync(resolve(output,'browser-results.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results));await browser.close();}

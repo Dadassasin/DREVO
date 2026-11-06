@@ -1,0 +1,502 @@
+{
+  "$defs": {
+    "Crop": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "minimum": 0,
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "minimum": 0,
+          "title": "Y",
+          "type": "integer"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "integer"
+        },
+        "output_max_width": {
+          "default": 2400,
+          "maximum": 4096,
+          "minimum": 64,
+          "title": "Output Max Width",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "title": "Crop",
+      "type": "object"
+    },
+    "EntityData": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Source"
+          },
+          "maxItems": 30,
+          "title": "Sources",
+          "type": "array"
+        },
+        "text": {
+          "default": "",
+          "maxLength": 30000,
+          "title": "Text",
+          "type": "string"
+        },
+        "normalized": {
+          "default": "",
+          "maxLength": 30000,
+          "title": "Normalized",
+          "type": "string"
+        },
+        "alternatives": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Alternatives",
+          "type": "array"
+        },
+        "uncertain": {
+          "default": false,
+          "title": "Uncertain",
+          "type": "boolean"
+        },
+        "confidence": {
+          "default": "unknown",
+          "enum": [
+            "unknown",
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        },
+        "source_note": {
+          "default": "",
+          "maxLength": 5000,
+          "title": "Source Note",
+          "type": "string"
+        },
+        "dates": {
+          "items": {
+            "$ref": "#/$defs/HistoricalDate"
+          },
+          "maxItems": 20,
+          "title": "Dates",
+          "type": "array"
+        },
+        "person_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Person Id"
+        },
+        "record_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Record Id"
+        },
+        "claim_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Id"
+        },
+        "from_person_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "From Person Id"
+        },
+        "to_person_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "To Person Id"
+        },
+        "relationship_type": {
+          "default": "other",
+          "enum": [
+            "parent",
+            "spouse",
+            "sibling",
+            "other"
+          ],
+          "title": "Relationship Type",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "supports": {
+          "default": true,
+          "title": "Supports",
+          "type": "boolean"
+        },
+        "event_type": {
+          "default": "",
+          "maxLength": 100,
+          "title": "Event Type",
+          "type": "string"
+        },
+        "place": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Place",
+          "type": "string"
+        },
+        "church": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Church",
+          "type": "string"
+        },
+        "section": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Section",
+          "type": "string"
+        },
+        "record_number": {
+          "default": "",
+          "maxLength": 50,
+          "title": "Record Number",
+          "type": "string"
+        },
+        "goal": {
+          "default": "",
+          "maxLength": 5000,
+          "title": "Goal",
+          "type": "string"
+        },
+        "facts": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Facts",
+          "type": "array"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "case_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Case Ids",
+          "type": "array"
+        },
+        "viewed_page_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "title": "Viewed Page Ids",
+          "type": "array"
+        },
+        "studied_page_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "title": "Studied Page Ids",
+          "type": "array"
+        },
+        "candidate_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Candidate Ids",
+          "type": "array"
+        },
+        "rejected_candidate_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Rejected Candidate Ids",
+          "type": "array"
+        },
+        "next_action": {
+          "default": "",
+          "maxLength": 5000,
+          "title": "Next Action",
+          "type": "string"
+        },
+        "demo": {
+          "default": false,
+          "title": "Demo",
+          "type": "boolean"
+        }
+      },
+      "title": "EntityData",
+      "type": "object"
+    },
+    "HistoricalDate": {
+      "additionalProperties": false,
+      "properties": {
+        "original": {
+          "maxLength": 200,
+          "title": "Original",
+          "type": "string"
+        },
+        "calendar": {
+          "default": "unknown",
+          "enum": [
+            "julian",
+            "gregorian",
+            "unknown"
+          ],
+          "title": "Calendar",
+          "type": "string"
+        },
+        "year": {
+          "anyOf": [
+            {
+              "maximum": 2200,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Year"
+        },
+        "month": {
+          "anyOf": [
+            {
+              "maximum": 12,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Month"
+        },
+        "day": {
+          "anyOf": [
+            {
+              "maximum": 31,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Day"
+        },
+        "approximate": {
+          "default": false,
+          "title": "Approximate",
+          "type": "boolean"
+        },
+        "modern_equivalent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Modern Equivalent"
+        }
+      },
+      "required": [
+        "original"
+      ],
+      "title": "HistoricalDate",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "page_id": {
+          "title": "Page Id",
+          "type": "string"
+        },
+        "crop": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Crop"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "page_id"
+      ],
+      "title": "Source",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "operation_id": {
+      "format": "uuid",
+      "title": "Operation Id",
+      "type": "string"
+    },
+    "operation": {
+      "enum": [
+        "create_record",
+        "add_person_mention",
+        "save_transcription",
+        "add_evidence",
+        "propose_relationship",
+        "create_finding",
+        "save_research_progress",
+        "propose_correction",
+        "create_person",
+        "create_claim",
+        "save_annotation"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "created_by": {
+      "const": "chatgpt",
+      "default": "chatgpt",
+      "title": "Created By",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "data": {
+      "$ref": "#/$defs/EntityData"
+    },
+    "entity_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Entity Id"
+    },
+    "expected_version": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Version"
+    },
+    "living": {
+      "default": false,
+      "title": "Living",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "operation_id",
+    "operation",
+    "title",
+    "data"
+  ],
+  "title": "InboxMessage",
+  "type": "object"
+}

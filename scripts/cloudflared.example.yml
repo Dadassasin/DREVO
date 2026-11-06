@@ -1,0 +1,7 @@
+# Копировать в приватный каталог конфигурации cloudflared, не помещать credentials в Git.
+tunnel: YOUR-TUNNEL-UUID
+credentials-file: C:\Windows\System32\config\systemprofile\.cloudflared\YOUR-TUNNEL-UUID.json
+ingress:
+  - hostname: api.YOUR-DOMAIN.example
+    service: http://127.0.0.1:8000
+  - service: http_status:404

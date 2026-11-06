@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0",
+  "integration_status": "unverified",
+  "catalog": "outbox/research-context/catalog.json",
+  "entity_shards": []
+}

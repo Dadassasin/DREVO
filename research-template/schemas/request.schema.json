@@ -1,0 +1,163 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "request_id": {
+      "format": "uuid",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "operation": {
+      "enum": [
+        "get_pages",
+        "get_crop",
+        "search",
+        "get_research_context",
+        "renew_image_links"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "created_by": {
+      "const": "chatgpt",
+      "default": "chatgpt",
+      "title": "Created By",
+      "type": "string"
+    },
+    "status": {
+      "const": "pending",
+      "default": "pending",
+      "title": "Status",
+      "type": "string"
+    },
+    "case_id": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Case Id"
+    },
+    "page_numbers": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Page Numbers",
+      "type": "array"
+    },
+    "page_id": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Page Id"
+    },
+    "variant": {
+      "default": "original",
+      "enum": [
+        "original",
+        "preview",
+        "thumbnail"
+      ],
+      "title": "Variant",
+      "type": "string"
+    },
+    "x": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "X"
+    },
+    "y": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Y"
+    },
+    "width": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Width"
+    },
+    "height": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Height"
+    },
+    "output_max_width": {
+      "default": 2400,
+      "maximum": 4096,
+      "minimum": 64,
+      "title": "Output Max Width",
+      "type": "integer"
+    },
+    "query": {
+      "default": "",
+      "maxLength": 200,
+      "title": "Query",
+      "type": "string"
+    },
+    "renew_request_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Renew Request Id"
+    }
+  },
+  "required": [
+    "request_id",
+    "operation"
+  ],
+  "title": "PageRequest",
+  "type": "object"
+}
