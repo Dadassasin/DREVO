@@ -21,3 +21,5 @@ research-data/
 .codex/
 .impeccable/
 *.tsbuildinfo
+.vercel/
+.env.*.local

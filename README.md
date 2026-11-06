@@ -2,6 +2,8 @@
 
 Генеалогический архив для **Windows 10**, Python 3.12+, Node.js 22.12+. Без Docker. Оригиналы остаются в `%USERPROFILE%\Desktop\Архив`; SQLite, секреты и кэш — в `.local/`.
 
+Веб-интерфейс: **https://drevo-beta.vercel.app**. API и оригиналы остаются на домашнем компьютере; для работы архива сервер и HTTPS-туннель должны быть включены. Подробности размещения: [Vercel](docs/VERCEL.md).
+
 ## Запуск на этом компьютере
 
 1. Запустите `start_server.bat`.
@@ -26,6 +28,7 @@
 - [Установка, запуск и обслуживание Windows 10](docs/WINDOWS.md).
 - [Архитектура и модель данных](docs/ARCHITECTURE.md).
 - [GitHub Pages, приватный GitHub и Cloudflare](docs/INTEGRATIONS.md).
+- [Размещение интерфейса на Vercel](docs/VERCEL.md).
 - [Как начать исследование в новом чате ChatGPT](docs/CHATGPT.md).
 - [Ручная проверка внешней интеграции](docs/ACCEPTANCE.md).
 - [Результаты проверок и ограничения](docs/STATUS.md).
