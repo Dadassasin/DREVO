@@ -29,6 +29,7 @@
 - [Архитектура и модель данных](docs/ARCHITECTURE.md).
 - [GitHub Pages, приватный GitHub и Cloudflare](docs/INTEGRATIONS.md).
 - [Размещение интерфейса на Vercel](docs/VERCEL.md).
+- [Постоянный адрес домашнего API через Tailscale Funnel](docs/TAILSCALE.md).
 - [Как начать исследование в новом чате ChatGPT](docs/CHATGPT.md).
 - [Ручная проверка внешней интеграции](docs/ACCEPTANCE.md).
 - [Результаты проверок и ограничения](docs/STATUS.md).
