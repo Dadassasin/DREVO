@@ -5,6 +5,11 @@ $BackendPath = Join-Path $ProjectRoot 'backend'
 $LocalPath = Join-Path $ProjectRoot '.local'
 if (-not (Test-Path -LiteralPath $PythonExe)) { throw 'Сначала запустите install.bat.' }
 New-Item -ItemType Directory -Force -Path $LocalPath | Out-Null
+Push-Location $BackendPath
+try {
+    & $PythonExe -X utf8 -c "from app.config import Settings; s=Settings(); assert s.archive_root.is_dir(), 'Archive drive is not connected'; assert s.db_path.is_file(), 'Working database not found; connect the archive drive first'"
+    if ($LASTEXITCODE -ne 0) { throw 'Архив или рабочая база недоступны. Подключите диск и проверьте пути в .env.' }
+} finally { Pop-Location }
 $PidFile = Join-Path $LocalPath 'processes.json'
 $Processes = @{}
 if (Test-Path -LiteralPath $PidFile) {

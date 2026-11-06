@@ -64,7 +64,9 @@ def _run_import(factory, settings, run_id):
             if root.is_file() and root.suffix.lower() != '.zip':
                 raise ValueError('Выберите каталог или ZIP')
             # Each directory containing images is one case. Root ZIPs are individual cases.
-            sources = [root] if root.is_file() else sorted({p.parent for p in root.rglob('*') if p.is_file() and p.suffix.lower() in EXTENSIONS} | {p for p in root.rglob('*') if p.is_file() and p.suffix.lower() == '.zip'}, key=lambda p: natural(str(p)))
+            data_root = settings.data_dir.resolve()
+            candidates = [] if root.is_file() else [p for p in root.rglob('*') if not p.is_relative_to(data_root) and p.is_file()]
+            sources = [root] if root.is_file() else sorted({p.parent for p in candidates if p.suffix.lower() in EXTENSIONS} | {p for p in candidates if p.suffix.lower() == '.zip'}, key=lambda p: natural(str(p)))
             for source in sources:
                 source = allowed_path(settings, source)
                 case_id, title, fond, inventory, number = case_metadata(source.name)
@@ -102,7 +104,10 @@ def _run_import(factory, settings, run_id):
                             size = entry.file_size if archive else path.stat().st_size
                             source_key = f'{path}|{member or ""}'
                             page_id = hashlib.sha256(f'{case_id}|{source_key}'.encode()).hexdigest()[:32]
-                            old = db.get(Page, page_id)
+                            # Relocation preserves page IDs referenced by research and links.
+                            old = db.scalar(select(Page).where(Page.case_id == case_id, Page.source_key == source_key))
+                            if old:
+                                page_id = old.id
                             if old and old.size == size and old.mtime_ns == stamp:
                                 run.skipped += 1
                                 if run.skipped % 50 == 0:
