@@ -7,7 +7,33 @@ import time
 from pathlib import Path
 from fastapi import HTTPException
 from sqlalchemy import update
-from ..models import Case, Link, Page
+from ..models import Case, Link, Page, State, AuditEvent
+
+
+def allow_page_temporarily(db, page, reason, minutes=30):
+    """Local operator grant for one explicitly requested scan; case stays private."""
+    if not 1 <= minutes <= 30 or not reason.strip():
+        raise ValueError('Укажите причину и срок от 1 до 30 минут')
+    value = {'id': secrets.token_urlsafe(24), 'expires': time.time() + minutes * 60,
+             'sha256': page.sha256, 'operations': ['original', 'crop'], 'reason': reason}
+    name = 'page_sharing_grant:' + page.id
+    row = db.get(State, name)
+    if row:
+        row.value = value
+    else:
+        db.add(State(key=name, value=value))
+    db.add(AuditEvent(entity_id=page.id, action='temporary_page_sharing', author='local_operator',
+                      details={'expires': value['expires'], 'operations': value['operations'], 'reason': reason}))
+    db.flush()
+    return value
+
+
+def page_grant(db, page, operation):
+    row = db.get(State, 'page_sharing_grant:' + page.id)
+    value = row.value if row else {}
+    if value.get('expires', 0) > time.time() and value.get('sha256') == page.sha256 and operation in value.get('operations', []):
+        return value
+    return None
 
 
 def key(settings):
@@ -27,11 +53,19 @@ def signature(secret, link):
 
 def issue(db, settings, secret, page, operation='original', params=None):
     case = db.get(Case, page.case_id)
+    grant = None
     if case.publication not in ('signed_links_allowed', 'public_allowed'):
-        raise HTTPException(403, 'Выдача копий для этого дела не разрешена. Проверьте условия использования и настройки приватности.')
+        grant = page_grant(db, page, operation)
+        if not grant:
+            raise HTTPException(403, 'Выдача копий для этого дела не разрешена. Проверьте условия использования и настройки приватности.')
     if not settings.public_api_url.startswith('https://'):
         raise HTTPException(409, 'Для внешних ссылок задайте HTTPS-адрес API')
-    link = Link(page_id=page.id, operation=operation, params={**(params or {}), '_sha256': page.sha256}, expires=time.time() + settings.link_minutes * 60)
+    signed_params = {**(params or {}), '_sha256': page.sha256}
+    expires = time.time() + settings.link_minutes * 60
+    if grant:
+        signed_params['_grant_id'] = grant['id']
+        expires = min(expires, grant['expires'])
+    link = Link(page_id=page.id, operation=operation, params=signed_params, expires=expires)
     db.add(link)
     db.flush()
     token = link.id + '.' + signature(secret, link)
@@ -50,7 +84,13 @@ def consume(db, secret, page_id, token):
     if link.expires <= time.time():
         raise HTTPException(410, 'Срок ссылки истёк. Запросите renew_image_links.')
     page = db.get(Page, page_id)
-    if not page or db.get(Case, page.case_id).publication == 'private_only':
+    if not page:
+        raise HTTPException(403, 'Выдача копий отключена')
+    if '_grant_id' in link.params:
+        grant = page_grant(db, page, link.operation)
+        if not grant or grant['id'] != link.params['_grant_id']:
+            raise HTTPException(403, 'Разрешение на выбранную страницу отозвано или истекло')
+    elif db.get(Case, page.case_id).publication == 'private_only':
         raise HTTPException(403, 'Выдача копий отключена')
     if link.params.get('_sha256') != page.sha256:
         raise HTTPException(403, 'Источник изменён после выдачи ссылки. Запросите новое разрешение.')
