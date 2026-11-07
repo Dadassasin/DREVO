@@ -1,0 +1,44 @@
+{
+  "project": "ДРЕВО",
+  "interface_version": "1.0.0",
+  "api_version": "1.0.0",
+  "api_base_url": "https://drevo-beta.vercel.app",
+  "backend_funnel_url": "https://drevo-archive.tail80303a.ts.net",
+  "diagnostics": [
+    "/api/v1/health",
+    "/api/v1/system/capabilities"
+  ],
+  "authentication": {
+    "type": "bearer_session",
+    "login": "/api/auth/login",
+    "archive_access": "authenticated_or_resource_specific_expiring_signature"
+  },
+  "github": {
+    "repository": "DREVO-Research-Data",
+    "visibility": "private",
+    "status": "WORKING",
+    "transport": "GitHub REST API; Contents read/write token on the Windows PC only",
+    "manifest": "manifest.json",
+    "requests": "requests/{pages,crops,search,research}/",
+    "responses": "responses/{pages,crops,search,research}/",
+    "proposals": "inbox/",
+    "receipts": "outbox/receipts/",
+    "verification": "Real technical request, signed JPEG response, and proposed transcription receipt checked against SQLite; ordinary ChatGPT write access is separate."
+  },
+  "signed_images": {
+    "supported": true,
+    "expires": true,
+    "revocable": true,
+    "resource_scoped": true,
+    "public_archive_browsing": false
+  },
+  "chatgpt": {
+    "status": "PARTIAL",
+    "signed_image_reading": "WORKING",
+    "verification": "User relayed the exact random challenge from an ordinary ChatGPT chat and it matched the technical JPEG.",
+    "github_writing": "BLOCKED",
+    "reason": "The standard ChatGPT GitHub app is read-only. JSON requests/results require manual relay or a separately available authorized writing client; the server token does not add chat tools."
+  },
+  "instructions_url": "https://drevo-beta.vercel.app/ai/instructions.md",
+  "runtime_status": "Static capability description; inspect authenticated /api/integration for actual sync status."
+}

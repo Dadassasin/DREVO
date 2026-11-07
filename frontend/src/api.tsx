@@ -35,4 +35,4 @@ export function useApi<T = any>(path: string, interval?: number, enabled=true) {
 }
 export const post = (body: unknown): RequestInit => ({method:'POST',body:JSON.stringify(body)});
 export const statusLabel: Record<string, string> = {proposed:'Предложено', needs_review:'Нужна проверка', human_reviewed:'Проверено человеком', confirmed:'Подтверждено', rejected:'Отклонено', conflicted:'Конфликт версий'};
-export const kindLabel: Record<string,string> = {person:'Персона', person_mention:'Упоминание', record:'Историческая запись', claim:'Утверждение', evidence:'Доказательство', transcription:'Транскрипция', relationship:'Родственная связь', research_task:'Исследование', finding:'Находка', annotation:'Аннотация'};
+export const kindLabel: Record<string,string> = {person:'Персона', person_mention:'Упоминание', record:'Историческая запись', claim:'Утверждение', evidence:'Доказательство', transcription:'Транскрипция', relationship:'Родственная связь', research_task:'Исследование', finding:'Находка', annotation:'Аннотация', hypothesis:'Гипотеза'};

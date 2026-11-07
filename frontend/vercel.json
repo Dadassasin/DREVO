@@ -6,7 +6,8 @@
   "installCommand": "npm ci",
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://drevo-archive.tail80303a.ts.net/api/:path*" },
-    { "source": "/ai/:path*", "destination": "https://drevo-archive.tail80303a.ts.net/ai/:path*" },
+    { "source": "/ai/images/:path*", "destination": "https://drevo-archive.tail80303a.ts.net/ai/images/:path*" },
+    { "source": "/ai/crops/:path*", "destination": "https://drevo-archive.tail80303a.ts.net/ai/crops/:path*" },
     { "source": "/health", "destination": "https://drevo-archive.tail80303a.ts.net/health" }
   ],
   "headers": [

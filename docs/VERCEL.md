@@ -14,7 +14,7 @@
 - Build Command: `npm run build`.
 - Output Directory: `dist`.
 - Build environment: `VITE_API_URL=https://drevo-beta.vercel.app`, `PAGES_BASE=/`.
-- `frontend/vercel.json` перенаправляет `/api/*`, `/ai/*` и `/health` на постоянный HTTPS-адрес Tailscale Funnel. При переносе на другую сеть/устройство замените destination в этих трёх правилах.
+- `frontend/vercel.json` перенаправляет `/api/*`, `/ai/images/*`, `/ai/crops/*` и `/health` на постоянный HTTPS-адрес Tailscale Funnel. При переносе на другую сеть/устройство замените destination в правилах маршрутизации.
 - Браузер обращается к API на том же домене Vercel. Authorization и параметры подписанных ссылок проходят к домашнему API; ответы API и изображения имеют `private, no-store`, кеширование CDN запрещено.
 - После получения постоянного production-адреса Vercel задайте его origin в серверном `DREVO_FRONTEND_ORIGIN`, затем перезапустите API.
 
@@ -27,3 +27,5 @@ CLI-развёртывание выполняется из `frontend/`. Сохр
 Домашний API подключён через [Tailscale Funnel](TAILSCALE.md). Запросы, включая защищённые изображения, проходят через Vercel; при активной работе с большими сканами они расходуют трафик Vercel и пропускную способность Funnel. Постоянная копия архива в Vercel не создаётся. Архив доступен только при работающем домашнем сервере и интернете.
 
 Проверка маршрутизации: `/health` должен вернуть JSON, `/api/cases` без входа — 401. После входа проверьте миниатюру, просмотр и оригинал; в ответах не должно быть `X-Vercel-Cache: HIT`. Официальная документация: [external rewrites](https://vercel.com/docs/routing/rewrites).
+
+AI index/instructions находятся в frontend/public/ai и отдаются статически. Общий rewrite /ai/* исключён, чтобы он не перехватывал эти файлы. scripts/switch_online.py копирует public и подставляет фактический Funnel-origin текущего ПК в AI index.

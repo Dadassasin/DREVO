@@ -22,7 +22,8 @@ def prepare_stage(root, origin, site, stage):
     config = json.loads((source / 'vercel.json').read_text(encoding='utf-8'))
     config['rewrites'] = [
         {'source': '/api/:path*', 'destination': origin + '/api/:path*'},
-        {'source': '/ai/:path*', 'destination': origin + '/ai/:path*'},
+        {'source': '/ai/images/:path*', 'destination': origin + '/ai/images/:path*'},
+        {'source': '/ai/crops/:path*', 'destination': origin + '/ai/crops/:path*'},
         {'source': '/health', 'destination': origin + '/health'},
     ]
     config.setdefault('headers', []).append({'source': '/drevo-origin.json', 'headers': [
@@ -30,7 +31,17 @@ def prepare_stage(root, origin, site, stage):
         {'key': 'CDN-Cache-Control', 'value': 'no-store'},
     ]})
     (stage / 'vercel.json').write_text(json.dumps(config, indent=2), encoding='utf-8')
-    (stage / 'public').mkdir()
+    if (source / 'public').is_dir():
+        shutil.copytree(source / 'public', stage / 'public')
+    else:
+        (stage / 'public').mkdir()
+    index_path = stage / 'public/ai/index.json'
+    if index_path.is_file():
+        index = json.loads(index_path.read_text(encoding='utf-8'))
+        index['backend_funnel_url'] = origin
+        index['api_base_url'] = site
+        index['instructions_url'] = site + '/ai/instructions.md'
+        index_path.write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding='utf-8')
     (stage / 'public/drevo-origin.json').write_text(json.dumps({'origin': origin}), encoding='utf-8')
     (stage / '.vercelignore').write_text('*\n!index.html\n!package.json\n!package-lock.json\n!tsconfig.json\n!vite.config.ts\n!vercel.json\n!public\n!public/**\n!src\n!src/**\n', encoding='utf-8')
 

@@ -9,7 +9,7 @@ from ..security.links import issue
 from ..images.storage import validate_crop
 from ..services.entities import create_entity, validate_sources, serialize, index_entity, search
 
-OPERATIONS = {'create_record': 'record', 'add_person_mention': 'person_mention', 'save_transcription': 'transcription', 'add_evidence': 'evidence', 'propose_relationship': 'relationship', 'create_finding': 'finding', 'save_research_progress': 'research_task', 'create_person': 'person', 'create_claim': 'claim', 'save_annotation': 'annotation'}
+OPERATIONS = {'create_record': 'record', 'add_person_mention': 'person_mention', 'save_transcription': 'transcription', 'add_evidence': 'evidence', 'propose_relationship': 'relationship', 'create_finding': 'finding', 'save_research_progress': 'research_task', 'create_person': 'person', 'create_claim': 'claim', 'save_annotation': 'annotation', 'create_hypothesis': 'hypothesis'}
 
 
 def context(db, settings):

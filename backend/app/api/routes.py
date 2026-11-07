@@ -33,6 +33,28 @@ def health():
     return {'status': 'ok', 'service': 'ДРЕВО'}
 
 
+@router.get('/api/v1/health')
+def public_health(request: Request):
+    # No archive queries, settings, identifiers or filesystem paths are exposed.
+    with request.app.state.engine.connect() as connection:
+        connection.exec_driver_sql('SELECT 1')
+    return {'status': 'ok', 'service': 'drevo-api', 'version': request.app.version}
+
+
+@router.get('/api/v1/system/capabilities')
+def public_capabilities(request: Request):
+    return {
+        'service': 'drevo-api', 'api_version': request.app.version,
+        'authentication': {'type': 'bearer_session', 'login': '/api/auth/login', 'code_in_url': False},
+        'capabilities': ['reference_import', 'zip_import', 'protected_images', 'original_pixel_crops',
+                         'signed_images', 'revocation', 'research_proposals', 'github_exchange'],
+        'integration': {'github_configured': bool(request.app.state.settings.github_repo and request.app.state.settings.github_token),
+                        'chatgpt': 'PARTIAL', 'ordinary_chat_image_test': 'WORKING',
+                        'standard_github_chat_write': 'BLOCKED'},
+        'ai_instructions': '/ai/instructions.md',
+    }
+
+
 @router.post('/api/auth/login')
 def sign_in(payload: LoginBody, request: Request):
     return login(request.app.state.factory, request.app.state.settings, payload.code, request.client.host if request.client else 'unknown')
@@ -140,6 +162,7 @@ def case_progress(identifier: str, request: Request, role=read):
         return {'total': len(pages), 'studied': len(studied), 'partial': len(viewed - studied), 'unviewed': len(identifiers - viewed - studied), 'next_pages': [public_page(p) for p in pages if p.id not in studied][:20]}
 
 
+@router.get('/api/v1/pages/{identifier}')
 @router.get('/api/pages/{identifier}')
 def get_page(identifier: str, request: Request, role=read):
     with request.app.state.factory() as db:
@@ -177,6 +200,7 @@ def image_response(settings, page, variant, params=None):
     return Response(render(settings, page, variant, params), media_type='image/jpeg')
 
 
+@router.get('/api/v1/pages/{identifier}/image')
 @router.get('/api/pages/{identifier}/image')
 def image(identifier: str, request: Request, variant: Literal['original', 'preview', 'thumbnail'] = 'preview', role=read):
     with request.app.state.factory() as db:
@@ -186,6 +210,7 @@ def image(identifier: str, request: Request, variant: Literal['original', 'previ
         return image_response(request.app.state.settings, page, variant)
 
 
+@router.post('/api/v1/pages/{identifier}/crop')
 @router.post('/api/pages/{identifier}/crop')
 def crop(identifier: str, payload: Crop, request: Request, role=read):
     with request.app.state.factory() as db:
@@ -193,6 +218,23 @@ def crop(identifier: str, payload: Crop, request: Request, role=read):
         if not page:
             raise HTTPException(404, 'Страница не найдена')
         return image_response(request.app.state.settings, page, 'crop', payload.model_dump())
+
+
+@router.get('/api/v1/pages/{identifier}/crop')
+def crop_get(identifier: str, request: Request, x: int, y: int, width: int, height: int,
+             output_max_width: int = 2400, role=read):
+    return crop(identifier, Crop(x=x, y=y, width=width, height=height, output_max_width=output_max_width), request, role)
+
+
+@router.get('/ai/crops/{identifier}')
+def ai_crop(identifier: str, request: Request, token: str = ''):
+    if not token:
+        raise HTTPException(403, 'Требуется подписанная ссылка')
+    with request.app.state.factory() as db:
+        link = consume(db, request.app.state.secret, identifier, token)
+        if link.operation != 'crop':
+            raise HTTPException(403, 'Разрешение не относится к вырезке')
+        return image_response(request.app.state.settings, db.get(Page, identifier), 'crop', link.params)
 
 
 @router.get('/ai/images/{identifier}')

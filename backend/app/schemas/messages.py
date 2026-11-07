@@ -3,7 +3,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Status = Literal['proposed', 'needs_review', 'human_reviewed', 'confirmed', 'rejected', 'conflicted']
-Kind = Literal['person', 'person_mention', 'record', 'claim', 'evidence', 'transcription', 'relationship', 'research_task', 'finding', 'annotation']
+Kind = Literal['person', 'person_mention', 'record', 'claim', 'evidence', 'transcription', 'relationship', 'research_task', 'finding', 'annotation', 'hypothesis']
 
 
 class Strict(BaseModel):
@@ -112,7 +112,7 @@ class EntityInput(Strict):
 class InboxMessage(Strict):
     schema_version: Literal['1.0'] = '1.0'
     operation_id: UUID
-    operation: Literal['create_record', 'add_person_mention', 'save_transcription', 'add_evidence', 'propose_relationship', 'create_finding', 'save_research_progress', 'propose_correction', 'create_person', 'create_claim', 'save_annotation']
+    operation: Literal['create_record', 'add_person_mention', 'save_transcription', 'add_evidence', 'propose_relationship', 'create_finding', 'save_research_progress', 'propose_correction', 'create_person', 'create_claim', 'save_annotation', 'create_hypothesis']
     created_by: Literal['chatgpt'] = 'chatgpt'
     title: str = Field(min_length=1, max_length=500)
     data: EntityData

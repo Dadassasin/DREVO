@@ -428,7 +428,8 @@
         "relationship",
         "research_task",
         "finding",
-        "annotation"
+        "annotation",
+        "hypothesis"
       ],
       "title": "Kind",
       "type": "string"

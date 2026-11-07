@@ -29,7 +29,7 @@
 
 - [Установка, запуск и обслуживание Windows 10](docs/WINDOWS.md).
 - [Архитектура и модель данных](docs/ARCHITECTURE.md).
-- [GitHub Pages, приватный GitHub и Cloudflare](docs/INTEGRATIONS.md).
+- [Vercel, Tailscale и приватный GitHub](docs/INTEGRATIONS.md).
 - [Размещение интерфейса на Vercel](docs/VERCEL.md).
 - [Постоянный адрес домашнего API через Tailscale Funnel](docs/TAILSCALE.md).
 - [Работа с внешним архивом на двух ПК](docs/TWO-PCS.md).
@@ -48,3 +48,5 @@ npm run build
 ```
 
 Внешние GitHub/Cloudflare/ChatGPT остаются **unverified** до настоящей сквозной проверки. Публичная публикация и включение передачи архивных копий не выполняются автоматически.
+
+Публичный AI-вход: https://drevo-beta.vercel.app/ai/index.json. [Аудит и фактические ограничения](docs/AUDIT-2026-11-07.md).

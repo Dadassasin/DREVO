@@ -77,7 +77,7 @@ def create_entity(db, payload, author):
     if data.get('demo'):
         raise HTTPException(422, 'Демонстрационный флаг разрешён только локальной командой seed-demo')
     validate_sources(db, payload.kind, data)
-    entity = Entity(kind=payload.kind, title=payload.title, data=data, status='needs_review' if data.get('uncertain') else 'proposed', author=author, living=payload.living)
+    entity = Entity(kind=payload.kind, title=payload.title, data=data, status='proposed' if author == 'chatgpt' else ('needs_review' if data.get('uncertain') else 'proposed'), author=author, living=payload.living)
     db.add(entity)
     db.flush()
     index_entity(db, entity)
@@ -98,7 +98,8 @@ def search(db, query, kind=None, status=None, case_id=None, year_from=None, year
         match = ' AND '.join('"' + word + '"*' for word in words)
         identifiers = db.execute(text('SELECT id FROM entity_fts WHERE entity_fts MATCH :q LIMIT 2000'), {'q': match}).scalars().all()
         stmt = stmt.where(Entity.id.in_(identifiers))
-    rows = db.scalars(stmt.order_by(Entity.updated.desc()).limit(5000 if fuzzy or any((case_id, year_from, year_to, place, event_type)) else limit).offset(0 if fuzzy else offset)).all()
+    post_filter = bool(fuzzy or any((case_id, year_from, year_to, place, event_type)))
+    rows = db.scalars(stmt.order_by(Entity.updated.desc()).limit(5000 if post_filter else limit).offset(0 if post_filter else offset)).all()
     result = []
     for item in rows:
         data = item.data
@@ -120,7 +121,7 @@ def search(db, query, kind=None, status=None, case_id=None, year_from=None, year
     if fuzzy:
         result.sort(key=lambda x: x['candidate_score'], reverse=True)
         return result[offset:offset + limit]
-    return result[:limit]
+    return result[offset:offset + limit] if post_filter else result[:limit]
 
 
 def review(db, entity, payload, author):

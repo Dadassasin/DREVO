@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 import time
 import httpx
 from sqlalchemy import select
@@ -9,9 +10,10 @@ from ..models import State, Page
 from ..security.links import key
 from ..research.protocol import process, context
 from .client import GitHubClient
+from ..schemas.messages import PageRequest, InboxMessage, EntityInput
 
 REQUEST_FOLDERS = {'pages', 'crops', 'search', 'research'}
-INBOX_FOLDERS = {'records', 'transcriptions', 'people', 'relationships', 'findings', 'evidence', 'progress', 'claims', 'annotations'}
+INBOX_FOLDERS = {'records', 'transcriptions', 'people', 'relationships', 'findings', 'evidence', 'progress', 'claims', 'annotations', 'hypotheses'}
 
 
 def set_state(db, name, value):
@@ -60,6 +62,10 @@ def sync_once(factory, settings, secret, client=None):
                     continue
             try:
                 raw = client.read(path)
+                if not isinstance(raw, dict):
+                    raise ValueError('Сообщение должно быть JSON-объектом')
+                if ('operation_id' in raw) != (parts[0] == 'inbox'):
+                    raise ValueError('Тип сообщения не соответствует папке обмена')
                 with factory() as db:
                     result = process(db, settings, secret, raw)
                     db.commit()
@@ -80,6 +86,7 @@ def sync_once(factory, settings, secret, client=None):
                 with factory() as db:
                     set_state(db, 'blob:' + path, {'sha': blob['sha']})
                     db.commit()
+                handled += 1
         with factory() as db:
             exported = context(db, settings)
         # Stable shards permit incremental updates: unchanged files are not committed again.
@@ -110,7 +117,15 @@ def sync_once(factory, settings, secret, client=None):
             path = f'outbox/research-context/entities-{i:04d}.json'
             manifest['entity_shards'].append(path)
             publish(path, shard)
+        manifest['schemas'] = {}
+        for name, model in (('request', PageRequest), ('inbox', InboxMessage), ('entity', EntityInput)):
+            path = f'schemas/{name}.schema.json'
+            manifest['schemas'][name] = path
+            publish(path, model.model_json_schema())
         publish('manifest.json', manifest)
+        for path in remote_shas:
+            if re.fullmatch(r'outbox/research-context/entities-\d{4}\.json',path) and path not in manifest['entity_shards']:
+                client.delete_entity_export(path)
         with factory() as db:
             set_state(db, 'sync', {'status': 'ok', 'last_sync': time.time(), 'last_commit': tree.get('sha'), 'handled': handled, 'integration_status': 'unverified'})
             db.commit()

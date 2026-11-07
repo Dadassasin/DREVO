@@ -1,50 +1,32 @@
-# GitHub Pages, приватный GitHub и Cloudflare
+# Действующие внешние интеграции
 
-Локальный архив работает без этих сервисов. Постоянное внешнее подключение не настроено: серверный GitHub token и домен Cloudflare не предоставлены. Выполнен отдельный реальный тест Quick Tunnel на технических изображениях; результаты и ограничение веб-инструмента ChatGPT приведены в STATUS.md. Секреты задавайте только в локальном `.env`.
+Сайт: https://drevo-beta.vercel.app. Домашний FastAPI публикуется существующим Tailscale Funnel; Vercel перенаправляет защищённые API-запросы на этот HTTPS-origin. Конфигурация Funnel не сбрасывается. Docker, MCP, Render и Cloudflare в действующей цепочке не используются.
 
-## Два разных репозитория
+## Запуск и переключение ПК
 
-Создайте **Public `DREVO`** только для исходников и интерфейса. Проверьте `.gitignore`: `.local`, `.env`, картинки, ZIP, БД, кэши и логи не должны попасть в Git. `research-template/` содержит только пустую структуру и JSON Schema, без персональных данных.
+Подключите архив как F: и запустите start_online.bat либо ярлык «ДРЕВО — запустить сайт». Для остановки используйте stop_server.bat; дождитесь завершения записи и резервной копии, затем безопасно извлеките диск. Автозапуск сервера Windows отключён по просьбе владельца. Tailscale Funnel хранит background-конфигурацию в службе, но сам Python-сервер после перезагрузки запускается вручную. См. TWO-PCS.md и TAILSCALE.md.
 
-Создайте отдельно **Private `DREVO-Research-Data`**, ветка `main`, и скопируйте в него содержимое `research-template/`. Не вкладывайте рабочий приватный репозиторий в публичный; сервер читает его через API, локальный clone не требуется.
+## GitHub
 
-Создайте fine-grained personal access token с доступом **только к DREVO-Research-Data**, Contents: Read and write и Metadata: Read. Это минимум для используемого Contents API; запись файлов передаёт Base64 и SHA существующей версии. Токен не нужен frontend или GitHub Pages. [GitHub Contents API](https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents).
+Существует один PRIVATE Dadassasin/DREVO-Research-Data. Для worker нужен отдельный fine-grained token: только этот репозиторий, Contents read/write, Metadata read. configure_github.bat вводит токен скрыто и сохраняет в .env на текущем ПК. Он не переносится в публичный код, Vercel или server.env внешнего диска. На втором ПК GitHub-токен настраивается отдельно. После замены токена перезапустите сервер.
 
-```dotenv
-DREVO_GITHUB_REPO="YOUR_NAME/DREVO-Research-Data"
-DREVO_GITHUB_TOKEN="задайте_локально"
-DREVO_GITHUB_BRANCH="main"
-DREVO_SYNC_SECONDS=60
-```
+Worker читает requests/pages,crops,search,research и inbox/records,transcriptions,people,relationships,findings,evidence,progress,claims,annotations,hypotheses. Фактические экспорты находятся в outbox/research-context; точные пути берите из manifest.json. Схемы обновляются worker вместе с экспортом. Ошибочные сообщения получают квитанции, одинаковые UUID не создают новых сущностей, изменённое содержимое при том же UUID конфликтует. Предложения ChatGPT имеют статус proposed.
 
-Перезапустите сервер/worker. В «ChatGPT и GitHub» выполните ручную синхронизацию и проверьте появление manifest.json, каталога и квитанций. Worker откажется работать с public репозиторием. Встроенные mock-тесты не подтверждают реальное подключение.
+Предложения и исходные исторические записи сохраняются раздельно. Живые люди и связанные сущности отфильтровываются согласно living; свободный текст автоматически не обезличивается. Устаревшие генерируемые entity-shards удаляются из текущей версии экспорта. GitHub сохраняет историю: удаление текущего файла не стирает прошлые коммиты. Аналогично удаление подписанной ссылки из файла не является отзывом разрешения.
 
-## Cloudflare: тестовый HTTPS
+## Права на изображения
 
-Установите `cloudflared` из официальной поставки. Для временного теста:
+Все реальные дела остаются private_only, пока владелец явно не проверит права на передачу конкретных копий. Только выбранному делу разрешается signed_links_allowed. public_allowed не создаёт открытый файловый каталог. Обычные JPG и вырезки требуют сессии; /ai/images и /ai/crops требуют действующей подписи. TTL по умолчанию 30 минут, максимум 100 обращений на ссылку, до 20 JPG в одном запросе, 300 новых сообщений в час. Отзыв проверяется сервером.
 
-```powershell
-cloudflared tunnel --url http://127.0.0.1:8000
-```
+Технический тест scripts/integration_probe.py использует один самостоятельно созданный JPEG DREVO API TEST. Он не публикует исторические сканы. Автоматическая проверка чтения изображения обычным ChatGPT этим тестом не подменяется.
 
-Quick Tunnel выдаёт временный trycloudflare.com адрес без домена, предназначен для разработки; адрес меняется после нового запуска. [Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
+## Публичная диагностика
 
-Укажите выданный адрес как `DREVO_PUBLIC_API_URL`, без завершающего слеша; перезапустите API. Не устанавливайте интерактивный Cloudflare Access challenge на `/ai/images/*`, если веб-инструмент ChatGPT не способен пройти его: доступ к этому маршруту уже ограничен подписанными разрешениями. Остальные API по-прежнему требуют отдельную пользовательскую сессию. Не выключайте проверки приложения.
+- /api/v1/health — минимальное состояние и версия.
+- /api/v1/system/capabilities — безопасные возможности, без путей и данных архива.
+- /ai/index.json — статический AI-вход.
+- /ai/instructions.md — статические инструкции обмена.
 
-Для CDN задайте bypass cache для `/api/*` и `/ai/*`. Не включайте Cache Everything для этих маршрутов. Приложение отправляет no-store и no-referrer. Не подключайте аналитические сервисы, записывающие query string подписанных ссылок. Входящие порты роутера не открываются.
+Обычное GitHub-подключение ChatGPT по официальной справке OpenAI предназначено для чтения, поэтому автоматическая отправка файлов из стандартного чата заблокирована возможностями клиента: https://help.openai.com/en/articles/11145903-connecting-github-to-chatgpt. Без MCP возможен ручной перенос JSON через GitHub Add file. Серверный token не добавляет ChatGPT инструменты записи.
 
-## Постоянный домен и служба Windows
-
-Для постоянного адреса нужен настроенный Cloudflare Tunnel и собственный hostname. Домен автоматически не покупается. Используйте официальный Windows service workflow: скачанный cloudflared помещается в `C:\Cloudflared\bin`, создаётся tunnel и конфигурация с tunnel UUID, credentials-file, ingress на `http://127.0.0.1:8000` и завершающим `http_status:404`; credentials и config для SYSTEM помещаются в `%WINDIR%\System32\config\systemprofile\.cloudflared`. Служба устанавливается командой `cloudflared.exe service install` в административном терминале, ImagePath указывает на выбранный config и `tunnel run`. Точный порядок и пути приведены в [официальном руководстве службы Windows](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/as-a-service/windows/).
-
-Используйте пример `scripts/cloudflared.example.yml` с вашими UUID и hostname. Не коммитьте credentials. Задайте восстановление службы при сбое в Windows Services, проверяйте состояние Cloudflared и подключение в панели Cloudflare. `scripts/check_health.ps1` проверяет локальный API, БД и наличие процесса; наличие процесса само по себе не доказывает внешний доступ.
-
-## Публикация интерфейса
-
-В настройках Public DREVO добавьте Actions repository variable `VITE_API_URL=https://ваш-api-домен`. Это адрес, не секрет. Settings → Pages → Source: GitHub Actions. Workflow `.github/workflows/pages.yml` собирает только `frontend/dist` с base `/DREVO/` и публикует артефакт; без HTTPS API сборка публикации остановится. [Vite: GitHub Pages](https://vite.dev/guide/static-deploy.html#github-pages).
-
-На сервере задайте `DREVO_FRONTEND_ORIGIN=https://YOUR_NAME.github.io` (только origin, **без `/DREVO/`**), `DREVO_PUBLIC_API_URL=https://ваш-api-домен`, перезапустите API. Откройте опубликованный сайт, войдите кодом. Токен остаётся в оперативной памяти, при обновлении страницы войдите заново. Снимите stale local build VITE_API_URL перед локальной разработкой либо задайте `.env.local` во frontend; корневой `.env` не копируется в frontend.
-
-## Разрешение выдачи выбранных сканов
-
-До первой AI-ссылки проверьте права и условия использования архивных копий. В конкретном деле откройте «Источник → Правила выдачи копий», выберите signed_links_allowed и подтвердите проверку прав. Все остальные дела остаются private_only. Даже public_allowed в текущей версии не создаёт постоянный публичный листинг — выдача остаётся подписанной. Лимиты: до 20 страниц в запросе, 300 новых сообщений/час, до 100 чтений каждой ссылки, TTL 30 минут по умолчанию. Массовый отзыв есть на странице интеграции.
+Публикация исходников в Vercel сейчас выполняется CLI. Автоматическая GitHub→Vercel связь не подключена; один git push сайт не обновляет. Старые примеры Pages/Cloudflare сохранены в истории проекта и отдельных служебных файлах, но не являются действующей инструкцией запуска.

@@ -7,3 +7,5 @@
 !vercel.json
 !src
 !src/**
+!public
+!public/**

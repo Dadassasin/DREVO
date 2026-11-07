@@ -55,7 +55,7 @@ def test_inbox_idempotence_conflicts_sources_review_and_search(imported):
     source = {'page_id': pages[0]['id'], 'crop': {'x': 1, 'y': 1, 'width': 100, 'height': 100}}
     raw = {'operation_id': str(uuid.uuid4()), 'operation': 'save_transcription', 'title': 'Макуха Андрей', 'data': {'text': 'Макуха', 'uncertain': True, 'sources': [source]}}
     first = c.post('/api/protocol', json=raw, headers=auth['admin']).json()
-    assert first['status'] == 'needs_review'
+    assert first['status'] == 'proposed'
     assert c.post('/api/protocol', json=raw, headers=auth['admin']).json() == first
     changed = dict(raw, title='Мануха')
     assert c.post('/api/protocol', json=changed, headers=auth['admin']).json()['status'] == 'conflicted'

@@ -440,7 +440,8 @@
         "propose_correction",
         "create_person",
         "create_claim",
-        "save_annotation"
+        "save_annotation",
+        "create_hypothesis"
       ],
       "title": "Operation",
       "type": "string"

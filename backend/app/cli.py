@@ -69,7 +69,7 @@ def seed_demo(settings):
 
 def schemas():
     folder = ROOT / 'research-template'
-    for path in ('requests/pages', 'requests/crops', 'requests/search', 'requests/research', 'responses/pages', 'responses/crops', 'responses/search', 'responses/research', 'inbox/records', 'inbox/transcriptions', 'inbox/people', 'inbox/relationships', 'inbox/findings', 'inbox/evidence', 'inbox/progress', 'inbox/claims', 'inbox/annotations', 'outbox/receipts', 'outbox/research-context', 'outbox/conflicts', 'schemas'):
+    for path in ('requests/pages', 'requests/crops', 'requests/search', 'requests/research', 'responses/pages', 'responses/crops', 'responses/search', 'responses/research', 'inbox/records', 'inbox/transcriptions', 'inbox/people', 'inbox/relationships', 'inbox/findings', 'inbox/evidence', 'inbox/progress', 'inbox/claims', 'inbox/annotations', 'inbox/hypotheses', 'outbox/receipts', 'outbox/research-context', 'outbox/conflicts', 'schemas'):
         (folder / path).mkdir(parents=True, exist_ok=True)
         (folder / path / '.gitkeep').touch()
     for name, model in (('request', PageRequest), ('inbox', InboxMessage), ('entity', EntityInput)):

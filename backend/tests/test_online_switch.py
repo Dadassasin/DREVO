@@ -41,3 +41,12 @@ def test_switch_checks_remote_marker_instead_of_trusting_local_state(monkeypatch
     assert not switch.already_active('https://site.example','https://this.tail123.ts.net')
     monkeypatch.setattr(switch,'fetch_json',lambda url: {'origin':'https://this.tail123.ts.net'} if 'drevo-origin' in url else {'status':'ok'})
     assert switch.already_active('https://site.example','https://this.tail123.ts.net')
+
+
+def test_ai_index_uses_current_funnel_origin_after_switch(tmp_path):
+    origin='https://second.tail999.ts.net'
+    switch.prepare_stage(ROOT,origin,'https://drevo-beta.vercel.app',tmp_path)
+    index=json.loads((tmp_path/'public/ai/index.json').read_text(encoding='utf-8'))
+    assert index['backend_funnel_url']==origin
+    assert (tmp_path/'public/ai/instructions.md').is_file()
+    assert not any(row['source']=='/ai/:path*' for row in json.loads((tmp_path/'vercel.json').read_text())['rewrites'])

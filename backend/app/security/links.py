@@ -35,7 +35,8 @@ def issue(db, settings, secret, page, operation='original', params=None):
     db.add(link)
     db.flush()
     token = link.id + '.' + signature(secret, link)
-    return {'link_id': link.id, 'url': f'{settings.public_api_url}/ai/images/{page.id}?token={token}', 'expires': link.expires}
+    resource = 'crops' if operation == 'crop' else 'images'
+    return {'link_id': link.id, 'url': f'{settings.public_api_url}/ai/{resource}/{page.id}?token={token}', 'expires': link.expires}
 
 
 def consume(db, secret, page_id, token):
