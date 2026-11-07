@@ -18,7 +18,7 @@ Worker читает requests/pages,crops,search,research и inbox/records,transc
 
 По явному указанию владельца все 145 существующих исторических дел переведены в signed_links_allowed. Новые импорты остаются private_only. Обычные JPG и вырезки требуют сессии; /ai/images и /ai/crops — действующей подписи. TTL по умолчанию 30 минут, максимум 100 успешных GET на ссылку, HEAD не расходует лимит, до 20 JPG в одном запросе, 300 новых сообщений в час. Отзыв проверяется сервером.
 
-Дополнительно поддержан requests/images → responses/images, operation=get_image_payload: ограниченный временный JPEG без Base64 в истории Git. Подробности, реальный тест и ограничение инструментов обычного ChatGPT — [IMAGE-DELIVERY.md](IMAGE-DELIVERY.md). Чтение технического JPEG не доказывает доступность настоящих сканов в каждом чате.
+Поддержан requests/images → responses/images, operation=get_image_payload: по умолчанию байты JPEG передаются Base64-частями через приватный GitHub; delivery=https сохраняет прежние ссылки. Все части и ответ публикуются одним коммитом. Декодер доступен через manifest.json → image_delivery.instructions. Лимиты, очистка и сохранение байтов в Git history — [GITHUB-IMAGE-BYTES.md](GITHUB-IMAGE-BYTES.md). Визуальный инструмент обычного чата проверяется отдельно от доставки байтов.
 
 Технический тест scripts/integration_probe.py использует один самостоятельно созданный JPEG DREVO API TEST. Он не публикует исторические сканы. Автоматическая проверка чтения изображения обычным ChatGPT этим тестом не подменяется.
 

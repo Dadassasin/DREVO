@@ -23,7 +23,7 @@ def ready(imported, monkeypatch):
 
 
 def request(c, auth, page, **kwargs):
-    raw={'operation':'get_image_payload','request_id':str(uuid.uuid4()),'page_id':page,'variant':'crop','x':10,'y':20,'width':100,'height':120,**kwargs}
+    raw={'operation':'get_image_payload','delivery':'https','request_id':str(uuid.uuid4()),'page_id':page,'variant':'crop','x':10,'y':20,'width':100,'height':120,**kwargs}
     return raw,c.post('/api/protocol',json=raw,headers=auth['admin'])
 
 
@@ -114,7 +114,7 @@ def test_permissions_and_size_limits_are_enforced(ready, monkeypatch):
 def test_github_image_request_and_no_binary_in_history(ready):
     app,c,s,folder,auth,pages=ready
     s.github_repo='test/DREVO-Research-Data';s.github_token='test-token'
-    raw={'request_id':str(uuid.uuid4()),'operation':'get_image_payload','page_id':pages[0]['id'],'variant':'preview','output_max_width':400,'quality':90}
+    raw={'request_id':str(uuid.uuid4()),'operation':'get_image_payload','delivery':'https','page_id':pages[0]['id'],'variant':'preview','output_max_width':400,'quality':90}
     mock=GitHubMock({'requests/images/'+raw['request_id']+'.json':raw})
     client=GitHubClient(s,transport=httpx.MockTransport(mock.handler))
     assert sync_once(app.state.factory,s,app.state.secret,client)['handled']==1

@@ -36,6 +36,8 @@ class PageRequest(Strict):
     query: str = Field(default='', max_length=200)
     renew_request_id: UUID | None = None
     quality: int = Field(default=90, ge=75, le=95)
+    delivery: Literal['github_base64', 'https'] = 'github_base64'
+    part_bytes: int = Field(default=12288, ge=4096, le=49152)
 
     @model_validator(mode='after')
     def image_variant(self):

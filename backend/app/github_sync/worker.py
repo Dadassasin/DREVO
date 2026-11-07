@@ -3,15 +3,16 @@ import json
 import re
 import time
 import httpx
+from fastapi import HTTPException
 from sqlalchemy import select
-from ..config import Settings
+from ..config import Settings, ROOT
 from ..db import make_db
-from ..models import State, Page
-from ..security.links import key
+from ..models import State, Page, Message, Link
+from ..security.links import key, consume, signature
 from ..research.protocol import process, context
 from .client import GitHubClient
 from ..schemas.messages import PageRequest, InboxMessage, EntityInput
-from ..images.payloads import cleanup as cleanup_payloads
+from ..images.payloads import cleanup as cleanup_payloads, github_files
 
 REQUEST_FOLDERS = {'pages', 'crops', 'search', 'research', 'images'}
 INBOX_FOLDERS = {'records', 'transcriptions', 'people', 'relationships', 'findings', 'evidence', 'progress', 'research-progress', 'claims', 'annotations', 'hypotheses'}
@@ -34,6 +35,28 @@ def sync_once(factory, settings, secret, client=None):
         client.private_check()
         tree = client.tree()
         remote_shas = {item['path']: item['sha'] for item in tree.get('tree', []) if item.get('type') == 'blob'}
+        # Delete only generated binary parts. JSON manifests/receipts stay as provenance.
+        expired_parts = []
+        bundles = {}
+        for path in remote_shas:
+            match = re.fullmatch(r'responses/images/([a-f0-9-]{36})/part-\d{4}\.json', path)
+            if match:
+                bundles.setdefault(match[1], []).append(path)
+        with factory() as db:
+            for identifier, paths in bundles.items():
+                message = db.get(Message, identifier)
+                p = message.response.get('image_payload', {}) if message else {}
+                if not p.get('base64_in_github'):
+                    continue
+                link = db.get(Link, p['link_id'])
+                try:
+                    if not link:
+                        raise HTTPException(410)
+                    consume(db, secret, p['page_id'], link.id + '.' + signature(secret, link), count_hit=False)
+                except HTTPException:
+                    expired_parts.extend(paths)
+        if expired_parts:
+            client.image_bundle(delete=expired_parts)
 
         def publish(path, value):
             raw = (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + '\n').encode()
@@ -76,7 +99,20 @@ def sync_once(factory, settings, secret, client=None):
                     destination = f'responses/{parts[1]}/{result["request_id"]}.json'
                 else:
                     destination = f'outbox/receipts/{result["request_id"]}.json'
-                client.write(destination, result)
+                if result.get('image_payload', {}).get('base64_in_github'):
+                    try:
+                        with factory() as db:
+                            files = github_files(db, settings, secret, result)
+                        # Manifest becomes visible only with ALL parts, in a single commit.
+                        client.image_bundle(files)
+                        if destination != f'responses/images/{result["request_id"]}.json':
+                            # Preserve the response-folder convention of legacy renew requests.
+                            client.write(destination, result)
+                    except HTTPException as exc:
+                        result = {'request_id': result['request_id'], 'status': 'error', 'http_status': exc.status_code, 'error': exc.detail}
+                        client.write(destination, result)
+                else:
+                    client.write(destination, result)
                 if result['status'] == 'conflicted':
                     client.write(f'outbox/conflicts/{result["request_id"]}.json', result)
                 with factory() as db:
@@ -95,8 +131,20 @@ def sync_once(factory, settings, secret, client=None):
         # Stable shards permit incremental updates: unchanged files are not committed again.
         manifest = {'schema_version': '1.0', 'integration_status': 'unverified', 'catalog': 'outbox/research-context/catalog.json', 'entity_shards': [], 'studied_pages': 'outbox/research-context/studied-pages.json',
                     'image_delivery': {'operation': 'get_image_payload', 'requests': 'requests/images/', 'responses': 'responses/images/',
-                                       'transport': 'temporary_https_jpeg', 'base64_in_git': False, 'max_bytes': 2000000,
-                                       'instructions': '/ai/instructions.md', 'ordinary_chat_visual_test': 'PENDING'}}
+                                       'transport': 'github_base64_parts', 'base64_in_git': True, 'max_bytes': 2000000,
+                                       'part_bytes_default': 12288, 'max_daily_bytes': 20000000,
+                                       'instructions': 'outbox/research-context/image-delivery.json', 'ordinary_chat_visual_test': 'PENDING'}}
+        publish(manifest['image_delivery']['instructions'], {
+            'operation': 'get_image_payload', 'delivery': 'github_base64',
+            'request_folder': 'requests/images/', 'response_folder': 'responses/images/',
+            'steps': ['Read image_payload.parts from the response JSON.',
+                      'Read EACH part.path through your authenticated GitHub connection. No external image URL is needed.',
+                      'Base64-decode each part.data separately, in index order. Verify byte counts, offsets and SHA-256 for every part and the complete JPEG.',
+                      'Save the resulting bytes as .jpg and pass that FILE to your visual analysis tool. Base64 text alone is not visual analysis.',
+                      'If the connector truncates a part, retry a fresh request with smaller part_bytes (minimum 4096).',
+                      'Expired parts are removed from the branch. Renew with a new UUID. Git history still retains the image bytes.'],
+            'decoder_python': (ROOT / 'scripts/decode_image_payload.py').read_text(encoding='utf-8'),
+            'history_retains_image_bytes': True, 'visual_test': 'PENDING'})
         publish(manifest['studied_pages'], exported['studied_page_ids'])
         for case in exported['cases']:
             case['page_indexes'] = []

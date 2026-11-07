@@ -161,6 +161,22 @@
       "minimum": 75,
       "title": "Quality",
       "type": "integer"
+    },
+    "delivery": {
+      "default": "github_base64",
+      "enum": [
+        "github_base64",
+        "https"
+      ],
+      "title": "Delivery",
+      "type": "string"
+    },
+    "part_bytes": {
+      "default": 12288,
+      "maximum": 49152,
+      "minimum": 4096,
+      "title": "Part Bytes",
+      "type": "integer"
     }
   },
   "required": [

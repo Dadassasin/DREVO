@@ -15,14 +15,41 @@ class GitHubMock:
         self.private = private
         self.writes = 0
         self.fail_write = False
+        self.head = 'commit-1'
+        self.pending_trees = {}
+        self.pending_commits = {}
+
+    @staticmethod
+    def blob_sha(value):
+        data=(json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode()
+        return hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
 
     def handler(self, request):
         path = request.url.path
         assert request.headers['authorization'].startswith('Bearer ')
         if path == '/repos/test/DREVO-Research-Data':
             return httpx.Response(200, json={'private': self.private})
+        if '/git/ref/heads/' in path:
+            return httpx.Response(200,json={'object':{'sha':self.head}})
         if '/git/trees/' in path:
-            return httpx.Response(200, json={'sha': 'commit-1', 'tree': [{'type': 'blob', 'path': p, 'sha': hashlib.sha1(json.dumps(v).encode()).hexdigest(), 'size': len(json.dumps(v))} for p,v in self.files.items()]})
+            return httpx.Response(200, json={'sha': 'root-tree', 'tree': [{'type': 'blob', 'path': p, 'sha': self.blob_sha(v), 'size': len(json.dumps(v))} for p,v in self.files.items()]})
+        if path.endswith('/git/trees') and request.method=='POST':
+            staged=dict(self.files)
+            for entry in json.loads(request.content)['tree']:
+                if entry.get('sha','not-null') is None:staged.pop(entry['path'],None)
+                else:staged[entry['path']]=json.loads(entry['content'])
+            sha='tree-'+str(len(self.pending_trees));self.pending_trees[sha]=staged
+            return httpx.Response(201,json={'sha':sha})
+        if path.endswith('/git/commits') and request.method=='POST':
+            raw=json.loads(request.content);sha='commit-new-'+str(len(self.pending_commits))
+            self.pending_commits[sha]=(raw['tree'],raw['parents'][0])
+            return httpx.Response(201,json={'sha':sha})
+        if '/git/refs/heads/' in path and request.method=='PATCH':
+            raw=json.loads(request.content);assert raw['force'] is False
+            tree,parent=self.pending_commits[raw['sha']]
+            if parent!=self.head or self.fail_write:return httpx.Response(422,json={'message':'not a fast forward'})
+            self.files=self.pending_trees[tree];self.head=raw['sha'];self.writes+=1
+            return httpx.Response(200,json={'object':{'sha':self.head}})
         name = path.split('/contents/', 1)[1]
         if request.method == 'GET':
             if name not in self.files:

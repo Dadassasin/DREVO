@@ -24,6 +24,7 @@ from app.images.storage import original, render
 from app.models import Page, Link, Message, Entity, State
 from app.services.entities import serialize
 from sqlalchemy import select
+from decode_image_payload import assemble
 
 REPORT = ROOT / '.local/qa/image-delivery.json'
 PAGES = ['fc8804986f8a240b4b0736dda59a0456', 'e5a194c8f74a08f5d5fe9ce610474d4a']
@@ -57,7 +58,7 @@ def prepare(client, factory):
     report = {'created_at': time.time(), 'confirmed_before': confirmed_digest(factory), 'requests': [], 'visual_chat_status': 'PENDING'}
     for page in PAGES:
         raw = {'schema_version': '1.0', 'request_id': str(uuid.uuid4()), 'operation': 'get_image_payload',
-               'page_id': page, 'variant': 'crop', 'x': 0, 'y': 100, 'width': 2500,
+               'page_id': page, 'delivery': 'github_base64', 'variant': 'crop', 'x': 0, 'y': 100, 'width': 2500,
                'height': 1400 if page == PAGES[0] else 1000, 'output_max_width': 2500, 'quality': 90}
         client.write('requests/images/' + raw['request_id'] + '.json', raw)
         report['requests'].append(raw)
@@ -146,9 +147,55 @@ def diagnose(client, factory, settings):
     print(json.dumps(result, ensure_ascii=False), flush=True)
 
 
+def verify_bytes(client, factory, settings):
+    """Download bytes ONLY through authenticated GitHub JSON, never image URLs."""
+    report = json.loads(REPORT.read_text(encoding='utf-8'))
+    results = []
+    for raw in report['requests']:
+        response = wait_read(client, 'responses/images/' + raw['request_id'] + '.json')
+        assert response['status'] == 'completed', response
+        p = response['image_payload']
+        downloaded = {}
+        def load(path):
+            value = client.read(path)
+            downloaded[path] = value
+            return value
+        data = assemble(response, load)
+        with factory() as db:
+            page = db.get(Page, raw['page_id'])
+            with original(settings, page).open('rb') as stream:
+                assert hashlib.file_digest(stream, 'sha256').hexdigest() == p['source_sha256'] == page.sha256
+            expected = render(settings, page, raw['variant'], {name: raw[name] for name in ('x', 'y', 'width', 'height', 'output_max_width', 'quality')})
+            assert hashlib.sha256(data).hexdigest() == hashlib.sha256(expected).hexdigest()
+            hits = db.get(Link, p['link_id']).hits
+        assert Image.open(io.BytesIO(data)).size == (p['width'], p['height'])
+        (REPORT.parent / ('github-payload-' + p['jpg_number'] + '.jpg')).write_bytes(data)
+        # Offline decoder artifacts for a client with a file/vision tool.
+        folder = REPORT.parent / ('github-parts-' + p['jpg_number']); folder.mkdir(exist_ok=True)
+        (folder / 'response.json').write_text(json.dumps(response), encoding='utf-8')
+        for path, value in downloaded.items():
+            (folder / Path(path).name).write_text(json.dumps(value), encoding='utf-8')
+        results.append({'request_id': raw['request_id'], 'image_payload': p,
+                        'downloaded_via': 'private_github_json_only', 'decoded_parts': len(downloaded),
+                        'source_and_crop_sha256_verified': True, 'https_image_get_hits': hits})
+        print('Decoded real JPG', p['jpg_number'], 'from', len(downloaded), 'GitHub JSON parts;', len(data), 'bytes', flush=True)
+    receipt = wait_read(client, 'outbox/receipts/' + report['proposal_operation_id'] + '.json')
+    with factory() as db:
+        assert db.get(Message, report['proposal_operation_id']).response == receipt
+        entity = db.get(Entity, receipt['entity_id'])
+        assert entity.status == 'proposed' and entity.kind == 'research_task'
+        report['sync'] = db.get(State, 'sync').value
+    report.update(verified_at=time.time(), results=results, sqlite_receipt=receipt,
+                  byte_transport='WORKING', visual_chat_status='PENDING',
+                  confirmed_data_unchanged=confirmed_digest(factory) == report['confirmed_before'])
+    assert report['confirmed_data_unchanged']
+    save(report)
+    print('GitHub bytes verified; proposed SQLite receipt verified; confirmed data unchanged.', flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['prepare', 'verify', 'diagnose'])
+    parser.add_argument('action', choices=['prepare', 'verify', 'verify-bytes', 'diagnose'])
     action = parser.parse_args().action
     settings = Settings(); engine, factory = make_db(settings)
     client = GitHubClient(settings)
@@ -156,6 +203,7 @@ def main():
         client.private_check()
         if action == 'prepare': prepare(client, factory)
         elif action == 'verify': verify(client, factory, settings)
+        elif action == 'verify-bytes': verify_bytes(client, factory, settings)
         else: diagnose(client, factory, settings)
     finally:
         client.close(); engine.dispose()

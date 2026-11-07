@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 import re
 import time
@@ -108,3 +109,55 @@ class GitHubClient:
         existing.raise_for_status()
         response=self.http.request('DELETE',address,json={'message':'DREVO: remove obsolete generated export','branch':self.settings.github_branch,'sha':existing.json()['sha']})
         response.raise_for_status()
+
+    def image_bundle(self, files=None, delete=()):
+        """Atomic private image-part publication/expiry; never force-update a branch."""
+        files = files or {}
+        pattern = r'responses/images/[a-f0-9-]{36}(?:\.json|/part-\d{4}\.json)'
+        if not files and not delete:
+            return
+        if any(not re.fullmatch(pattern, path) for path in files):
+            raise ValueError('Разрешены только manifest/parts изображения')
+        if any(not re.fullmatch(r'responses/images/[a-f0-9-]{36}/part-\d{4}\.json', path) for path in delete):
+            raise ValueError('Удаление разрешено только для временных частей изображения')
+        self.private_check()
+        ref = f'{self.prefix}/git/ref/heads/{quote(self.settings.github_branch, safe="/")}'
+        for attempt in range(3):
+            try:
+                head_response = self.http.get(ref); head_response.raise_for_status()
+                head = head_response.json()['object']['sha']
+                tree_response = self.http.get(f'{self.prefix}/git/trees/{head}', params={'recursive': '1'})
+                tree_response.raise_for_status(); tree = tree_response.json()
+                if tree.get('truncated'):
+                    raise ValueError('GitHub tree truncated')
+                existing = {row['path']: row['sha'] for row in tree['tree'] if row['type'] == 'blob'}
+                entries = []
+                for path, value in files.items():
+                    raw = json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + '\n'
+                    encoded = raw.encode()
+                    sha = hashlib.sha1(b'blob ' + str(len(encoded)).encode() + b'\0' + encoded).hexdigest()
+                    if existing.get(path) == sha:
+                        continue
+                    if path in existing:
+                        raise ValueError('Конфликт существующего image bundle: ' + path)
+                    entries.append({'path': path, 'mode': '100644', 'type': 'blob', 'content': raw})
+                entries.extend({'path': path, 'mode': '100644', 'type': 'blob', 'sha': None} for path in delete if path in existing)
+                if not entries:
+                    return
+                created = self.http.post(f'{self.prefix}/git/trees', json={'base_tree': tree['sha'], 'tree': entries})
+                created.raise_for_status()
+                commit = self.http.post(f'{self.prefix}/git/commits', json={'message': 'DREVO: image byte bundle' if files else 'DREVO: expire image parts', 'tree': created.json()['sha'], 'parents': [head]})
+                commit.raise_for_status()
+                updated = self.http.patch(f'{self.prefix}/git/refs/heads/{quote(self.settings.github_branch, safe="/")}', json={'sha': commit.json()['sha'], 'force': False})
+                if updated.status_code in (409, 422) and attempt < 2:
+                    time.sleep(2 ** attempt)
+                    continue
+                updated.raise_for_status()
+                return
+            except httpx.TransportError:
+                if attempt == 2:
+                    raise
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code not in (500, 502, 503, 504) or attempt == 2:
+                    raise
+            time.sleep(2 ** attempt)

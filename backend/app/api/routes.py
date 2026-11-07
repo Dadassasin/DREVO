@@ -48,7 +48,7 @@ def public_capabilities(request: Request):
         'service': 'drevo-api', 'api_version': request.app.version,
         'authentication': {'type': 'bearer_session', 'login': '/api/auth/login', 'code_in_url': False},
         'capabilities': ['reference_import', 'zip_import', 'protected_images', 'original_pixel_crops',
-                         'signed_images', 'signed_image_head', 'temporary_image_payload', 'revocation', 'research_proposals', 'github_exchange'],
+                         'signed_images', 'signed_image_head', 'temporary_image_payload', 'github_image_bytes', 'revocation', 'research_proposals', 'github_exchange'],
         'integration': {'github_configured': bool(request.app.state.settings.github_repo and request.app.state.settings.github_token),
                         'chatgpt': 'PARTIAL', 'ordinary_chat_image_test': 'TECHNICAL_FIXTURE_PASSED_REAL_SCAN_PENDING',
                         'github_chat_write': 'CLIENT_DEPENDENT'},

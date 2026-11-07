@@ -73,7 +73,9 @@ def process(db, settings, secret, raw):
             elif model.operation == 'get_image_payload':
                 response['image_payload'] = prepare_payload(db, settings, secret, model)
             elif model.operation == 'renew_image_links' and (old := db.get(Message, str(model.renew_request_id))) and 'image_payload' in old.response:
-                renewed = PageRequest.model_validate({**old.response['image_payload']['request'], 'request_id': identifier})
+                previous = old.response['image_payload']
+                renewed = PageRequest.model_validate({**previous['request'],
+                    'delivery': 'github_base64' if previous.get('base64_in_github') else 'https', 'request_id': identifier})
                 response['image_payload'] = prepare_payload(db, settings, secret, renewed)
             else:
                 response['pages'] = page_response(db, settings, secret, model)

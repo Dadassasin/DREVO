@@ -30,21 +30,27 @@ For a crop use `requests/crops/<UUID>.json`, `operation: "get_crop"`, `page_id`,
 
 Expired links return 410. Create a new `renew_image_links` request with a fresh `request_id` and the old `renew_request_id`. Repeating the exact old request returns its existing receipt rather than re-running it. Reusing a UUID with different JSON causes a conflict. Removing a URL from GitHub history does not revoke it: use the server's revoke operation. Links also have hit limits.
 
-## Reliable image delivery attempt: get_image_payload
+## Image BYTES through private GitHub: get_image_payload
 
-If your web/image tool cannot fetch the usual query-token link, write `requests/images/<fresh UUID>.json`:
+Write `requests/images/<fresh UUID>.json` to receive actual JPEG bytes through your GitHub connection. No request to an external image URL is needed:
 
 ```json
-{"schema_version":"1.0","request_id":"<fresh UUID>","operation":"get_image_payload","page_id":"<page_id>","variant":"crop","x":0,"y":100,"width":1600,"height":1000,"output_max_width":1600,"quality":90}
+{"schema_version":"1.0","request_id":"<fresh UUID>","operation":"get_image_payload","delivery":"github_base64","page_id":"<page_id>","variant":"crop","x":0,"y":100,"width":1600,"height":1000,"output_max_width":1600,"quality":90,"part_bytes":12288}
 ```
 
-Read `responses/images/<UUID>.json`, then use `image_payload.url` with your actual image-fetch tool. If it fails, try `image_payload.direct_url` (when present). These are direct JPEG responses with no redirects, no login page, a `.jpg` path, and a path-bound signature instead of a query token. Do not alter the path, token or extension. GET and HEAD are supported; HEAD does not consume any of the 100 GETs. Default expiry is 30 minutes. `renew_image_links` in requests/images with a new UUID and the original renew_request_id recreates an expired payload.
+Read `responses/images/<UUID>.json`, then read EVERY `image_payload.parts[].path` using the private GitHub connector. Each part contains `data` (Base64), `index`, `offset`, `bytes`, `sha256`, and `request_id`. Base64-decode EACH part separately, verify its SHA-256 and byte count, then concatenate the decoded bytes in index order. Verify the full JPEG against image_payload.sha256 and bytes. Save as .jpg and pass the reconstructed FILE to your visual analysis tool. Do not claim to see an image just from reading the encoded text. The manifest and all parts appear atomically in one commit.
+
+Read `outbox/research-context/image-delivery.json` in the SAME private repository: it contains machine instructions and a standard-library Python decoder under decoder_python. No Vercel/Funnel/image URL is required to fetch either bytes or decoder. part_bytes defaults to 12288 (at most 16384 Base64 characters per part), range 4096–49152. If your connector truncates a part, create a new UUID with smaller part_bytes; never decode a truncated tool excerpt. Retrieve complete files and feed them to the file tool rather than manually copying long strings. Maximum binary transfer into GitHub is 20 MB per rolling 24 hours.
+
+Default lifetime is 30 minutes. Worker removes parts from the current branch after expiry/revocation; Git history still retains those scan copies, and already downloaded bytes cannot be revoked. Manifests/receipts remain. Renew with a fresh UUID and renew_request_id in requests/images. Existing HTTPS-only payloads renew in their original delivery mode; request a NEW get_image_payload with delivery=github_base64 to switch them.
+
+For HTTPS-only delivery explicitly set delivery=https. image_payload.url and optional direct_url remain available as an additional path even for byte payloads. GET and HEAD are supported; HEAD does not consume the 100 GETs. GitHub reads are not counted as image URL GETs.
 
 Variants: `original` and `preview` both create bounded reading copies of the whole page; neither exports the untouched full-resolution original. For full original bytes use existing get_pages. `crop` requires original-pixel coordinates. output_max_width is 64–4096, quality 75–95 (default 90). No upscaling. Up to 2,000,000 JPEG bytes and 32 active temporary images; larger requests return 413 and should be split into smaller crops. The server does not silently reduce quality to fit. The existing two-slot renderer and serial worker bound concurrency.
 
-The response includes source_sha256 and sha256 of the transferred JPEG, byte size, actual dimensions, expiry, link_id and max_gets. If you have a download/vision tool, download the bytes, check the transmitted SHA-256, and pass the resulting file to that tool as an image. Merely reading JSON, hashes, or Base64 characters does not count as viewing pixels. GitHub contains no Base64 image parts: a text-only connector cannot turn those parts into vision input, and Git history would retain all scan copies. Temporary JPEGs stay on the home disk and are removed after expiry/revocation by the sync worker (normally one poll plus a two-minute cleanup grace).
+The response includes source_sha256 and sha256 of the transferred JPEG, byte size, actual dimensions, expiry, link_id, part_count and parts. Temporary local JPEGs are cleaned up separately with a two-minute grace. The owner has explicitly requested private GitHub byte delivery despite retention in Git history. No image bytes go to the public DREVO repository.
 
-Compatibility is still **PENDING in the user's ordinary ChatGPT chat**. If both URLs are rejected before reaching the home server, report the actual tool error and state that visual analysis is blocked in this chat. Do not request repeated owner permissions, fabricate a reading, or claim that changing a JSON encoding solves an absent image-input tool. A supported file/vision tool or an attached JPEG is necessary if the chat cannot fetch external images. No API key, paid service, MCP or new architecture is required by this delivery mode.
+Compatibility of the actual file/vision tool is **PENDING in the user's ordinary ChatGPT chat**. Use GitHub bytes first rather than retrying rejected image URLs. If the connector cannot provide complete parts to a decoder or the chat cannot send a reconstructed file to its vision tool, report that exact missing step. Do not request repeated owner permissions or fabricate a reading. No API key, paid service, MCP or new architecture is required by this delivery mode.
 
 ## Save a proposal
 
