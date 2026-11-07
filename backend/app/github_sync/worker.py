@@ -13,7 +13,7 @@ from .client import GitHubClient
 from ..schemas.messages import PageRequest, InboxMessage, EntityInput
 
 REQUEST_FOLDERS = {'pages', 'crops', 'search', 'research'}
-INBOX_FOLDERS = {'records', 'transcriptions', 'people', 'relationships', 'findings', 'evidence', 'progress', 'claims', 'annotations', 'hypotheses'}
+INBOX_FOLDERS = {'records', 'transcriptions', 'people', 'relationships', 'findings', 'evidence', 'progress', 'research-progress', 'claims', 'annotations', 'hypotheses'}
 
 
 def set_state(db, name, value):

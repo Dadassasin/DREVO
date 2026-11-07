@@ -23,7 +23,11 @@
     "responses": "responses/{pages,crops,search,research}/",
     "proposals": "inbox/",
     "receipts": "outbox/receipts/",
-    "verification": "Real technical request, signed JPEG response, and proposed transcription receipt checked against SQLite; ordinary ChatGPT write access is separate."
+    "verification": "Real technical request, signed JPEG response, and proposed transcription receipt checked against SQLite; ordinary ChatGPT write access is separate.",
+    "progress_folder": "inbox/progress/",
+    "progress_folder_aliases": [
+      "inbox/research-progress/"
+    ]
   },
   "signed_images": {
     "supported": true,
@@ -36,9 +40,13 @@
     "status": "PARTIAL",
     "signed_image_reading": "WORKING",
     "verification": "User relayed the exact random challenge from an ordinary ChatGPT chat and it matched the technical JPEG.",
-    "github_writing": "BLOCKED",
-    "reason": "The standard ChatGPT GitHub app is read-only. JSON requests/results require manual relay or a separately available authorized writing client; the server token does not add chat tools."
+    "github_writing": "WORKING",
+    "reason": "Actual requests/pages and research-progress JSON from the user chat were found in GitHub. Write capability depends on the specific chat connection; verify actual files and server receipts instead of making blanket assumptions."
   },
   "instructions_url": "https://drevo-beta.vercel.app/ai/instructions.md",
-  "runtime_status": "Static capability description; inspect authenticated /api/integration for actual sync status."
+  "runtime_status": "Static capability description; inspect authenticated /api/integration for actual sync status.",
+  "browser_ui": {
+    "case_url_template": "https://drevo-beta.vercel.app/#/archive/{case_id}",
+    "entity_url_template": "https://drevo-beta.vercel.app/#/entity/{entity_id}"
+  }
 }

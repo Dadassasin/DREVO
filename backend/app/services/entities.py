@@ -50,7 +50,7 @@ def validate_sources(db, kind, data, demo=False):
         source['sha256'] = page.sha256
         if source.get('crop'):
             validate_crop(page, source['crop'])
-    if data.get('uncertain') and (not sources or not any(s.get('crop') for s in sources)):
+    if kind != 'research_task' and data.get('uncertain') and (not sources or not any(s.get('crop') for s in sources)):
         raise HTTPException(422, 'Неуверенное прочтение требует вырезки оригинала')
     refs = {'person_id': 'person', 'record_id': 'record', 'claim_id': 'claim', 'from_person_id': 'person', 'to_person_id': 'person'}
     for key, expected_kind in refs.items():

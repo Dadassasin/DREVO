@@ -6,7 +6,7 @@ This is a static document; JavaScript and MCP are not needed to read it. Read /a
 
 Your chat needs an authorized connection that can **read and write** the private DREVO-Research-Data GitHub repository. Do not assume that a read-only GitHub search connection can create files. If writing is unsupported, state that automatic requests and automatic result submission are blocked. Do not request an administrator code or GitHub token in chat. A user may manually commit the JSON files as a fallback.
 
-OpenAI's standard GitHub app for ordinary ChatGPT is documented as read-only: https://help.openai.com/en/articles/11145903-connecting-github-to-chatgpt. Therefore the fully automatic GitHub round-trip is blocked in that standard experience. A working server token does not grant the chat write tools. The user can copy the generated JSON to GitHub's Add file interface without giving a token to ChatGPT.
+Write capability is connection-dependent. In this deployment, real requests/pages and research-progress files from the user's chat have been verified in private GitHub. Check actual available tools and committed files; do not assume that every ordinary chat is read-only. The server token itself does not grant a chat write tools. If a particular connection cannot write, the user can submit the JSON manually.
 
 The PC uses a separate fine-grained GitHub token, Contents read/write for this repository only. The token is not a ChatGPT credential and is not included in this document. Direct API metadata, image and crop access requires a bearer session; use server-issued signed links for this chat instead.
 
@@ -47,3 +47,12 @@ All request/inbox objects use strict schemas in the private `schemas/` directory
 ## Real image test
 
 The owner supplies an expiring URL for a generated **DREVO API TEST** JPEG. Open it with your actual image/web tool and report the visible text and challenge code. Do not claim success merely from its filename, HTTP 200, this document, or backend test logs. The final end-to-end status remains unverified until image reading and proposal round-trip succeed in the actual ordinary ChatGPT chat.
+
+
+## Research progress and browser links
+
+Use inbox/progress/<operation_id>.json for save_research_progress; inbox/research-progress/ is also supported for compatibility. Read outbox/receipts/<operation_id>.json before claiming SQLite import. For a research plan uncertain=true can describe an unverified hypothesis without a crop; uncertain readings in transcription/record/mention still need a source crop.
+
+The browser uses hash routing: https://drevo-beta.vercel.app/#/archive/<case_id> and https://drevo-beta.vercel.app/#/entity/<entity_id>. A plain /archive/<case_id> URL returns 404.
+
+A multi-page get_pages request is atomic: if any requested page lacks permission, the whole request returns an error. Request only explicitly permitted pages. A temporary grant for JPG 0057 does not authorize JPG 0056 or the entire case. Permissions and signed links expire; create a new UUID after fixing a denied request, since reusing its old UUID returns the saved error receipt.

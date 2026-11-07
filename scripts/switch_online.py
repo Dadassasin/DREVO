@@ -41,6 +41,7 @@ def prepare_stage(root, origin, site, stage):
         index['backend_funnel_url'] = origin
         index['api_base_url'] = site
         index['instructions_url'] = site + '/ai/instructions.md'
+        index['browser_ui'] = {'case_url_template': site + '/#/archive/{case_id}', 'entity_url_template': site + '/#/entity/{entity_id}'}
         index_path.write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding='utf-8')
     (stage / 'public/drevo-origin.json').write_text(json.dumps({'origin': origin}), encoding='utf-8')
     (stage / '.vercelignore').write_text('*\n!index.html\n!package.json\n!package-lock.json\n!tsconfig.json\n!vite.config.ts\n!vercel.json\n!public\n!public/**\n!src\n!src/**\n', encoding='utf-8')

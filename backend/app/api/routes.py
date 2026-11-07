@@ -50,7 +50,7 @@ def public_capabilities(request: Request):
                          'signed_images', 'revocation', 'research_proposals', 'github_exchange'],
         'integration': {'github_configured': bool(request.app.state.settings.github_repo and request.app.state.settings.github_token),
                         'chatgpt': 'PARTIAL', 'ordinary_chat_image_test': 'WORKING',
-                        'standard_github_chat_write': 'BLOCKED'},
+                        'github_chat_write': 'CLIENT_DEPENDENT'},
         'ai_instructions': '/ai/instructions.md',
     }
 

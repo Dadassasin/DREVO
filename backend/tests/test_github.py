@@ -162,3 +162,23 @@ def test_real_file_change_on_conflict_is_not_overwritten(env):
     with pytest.raises(httpx.HTTPStatusError): client.write(path,{'value':'automatic overwrite'})
     assert mock.files[path]=={'value':'human change'}
     client.close()
+
+
+def test_research_progress_folder_alias_is_imported_once(env):
+    app,c,s,folder,auth=env
+    s.github_repo='test/DREVO-Research-Data';s.github_token='test-token'
+    identifier=str(uuid.uuid4())
+    raw={'operation_id':identifier,'operation':'save_research_progress','title':'Technical progress','data':{'goal':'Check original','uncertain':True,'next_action':'Request explicit image permission'}}
+    mock=GitHubMock({'inbox/research-progress/'+identifier+'.json':raw})
+    client=GitHubClient(s,transport=httpx.MockTransport(mock.handler))
+    assert sync_once(app.state.factory,s,app.state.secret,client)['handled']==1
+    receipt=mock.files['outbox/receipts/'+identifier+'.json']
+    with app.state.factory() as db:
+        assert db.get(Entity,receipt['entity_id']).kind=='research_task'
+        assert db.get(Entity,receipt['entity_id']).status=='proposed'
+    mock.files['inbox/progress/'+identifier+'.json']=raw
+    sync_once(app.state.factory,s,app.state.secret,client)
+    from sqlalchemy import select,func
+    with app.state.factory() as db:
+        assert db.scalar(select(func.count()).select_from(Entity))==1
+    client.close()
