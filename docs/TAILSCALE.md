@@ -22,7 +22,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\start_tailscale_funn
 tailscale funnel status
 ```
 
-После внешней проверки `GET /health = 200` настройте три внешних rewrite в `frontend/vercel.json`: `/api/*`, `/ai/*`, `/health` → соответствующие пути Funnel. Для текущей схемы `DREVO_PUBLIC_API_URL`, `DREVO_FRONTEND_ORIGIN` и production-переменная Vercel `VITE_API_URL` равны `https://drevo-beta.vercel.app`. Перезапустите API и переиздайте frontend.
+После внешней проверки `GET /health = 200` настройте внешние rewrite в `frontend/vercel.json`: `/api/*`, `/ai/images/*`, `/ai/crops/*`, `/health` → соответствующие пути Funnel. Для текущей схемы `DREVO_PUBLIC_API_URL`, `DREVO_FRONTEND_ORIGIN` и production-переменная Vercel `VITE_API_URL` равны `https://drevo-beta.vercel.app`. Перезапустите API и переиздайте frontend.
 
 Так браузер и подписанные ссылки используют один адрес Vercel. Это также обходит наблюдавшийся обрыв публичного TLS к Funnel из домашней сети: из облака Vercel подключение проверено. Vercel передаёт запросы и ответы, включая изображения; кеширование API запрещено. Лимиты трафика Vercel и Funnel сохраняются.
 
