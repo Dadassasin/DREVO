@@ -21,13 +21,13 @@ class Crop(Strict):
 class PageRequest(Strict):
     schema_version: Literal['1.0'] = '1.0'
     request_id: UUID
-    operation: Literal['get_pages', 'get_crop', 'search', 'get_research_context', 'renew_image_links']
+    operation: Literal['get_pages', 'get_crop', 'search', 'get_research_context', 'renew_image_links', 'get_image_payload']
     created_by: Literal['chatgpt'] = 'chatgpt'
     status: Literal['pending'] = 'pending'
     case_id: str | None = Field(default=None, max_length=100)
     page_numbers: list[str] = Field(default_factory=list, max_length=20)
     page_id: str | None = Field(default=None, max_length=100)
-    variant: Literal['original', 'preview', 'thumbnail'] = 'original'
+    variant: Literal['original', 'preview', 'thumbnail', 'crop'] = 'original'
     x: int | None = None
     y: int | None = None
     width: int | None = None
@@ -35,6 +35,18 @@ class PageRequest(Strict):
     output_max_width: int = Field(default=2400, ge=64, le=4096)
     query: str = Field(default='', max_length=200)
     renew_request_id: UUID | None = None
+    quality: int = Field(default=90, ge=75, le=95)
+
+    @model_validator(mode='after')
+    def image_variant(self):
+        if self.variant == 'crop' and self.operation != 'get_image_payload':
+            raise ValueError('variant=crop используется с get_image_payload; для get_crop укажите координаты')
+        if self.operation == 'get_image_payload':
+            if not self.page_id or self.variant == 'thumbnail':
+                raise ValueError('get_image_payload требует page_id и variant original, preview или crop')
+            if self.variant == 'crop':
+                Crop(x=self.x, y=self.y, width=self.width, height=self.height, output_max_width=self.output_max_width)
+        return self
 
 
 class Source(Strict):

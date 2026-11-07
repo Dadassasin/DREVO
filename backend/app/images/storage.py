@@ -107,14 +107,14 @@ def _render(settings, page, variant='preview', params=None):
                 max_width = params.get('output_max_width', 2400)
                 image.thumbnail((max_width, max_width * 4))
             else:
-                limit = 240 if variant == 'thumbnail' else 4096
+                limit = (params or {}).get('output_max_width', 240 if variant == 'thumbnail' else 4096)
                 source.draft('RGB', (limit, limit))
                 source.thumbnail((limit, limit))
                 image = source.copy()
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             output = io.BytesIO()
-            image.save(output, 'JPEG', quality=90)
+            image.save(output, 'JPEG', quality=(params or {}).get('quality', 90))
             return output.getvalue()
 
 

@@ -33,7 +33,7 @@ def create_app(settings=None, initialize=False):
     app.state.settings, app.state.engine, app.state.factory = settings, engine, factory
     app.state.secret = key(settings)
     app.state.image_semaphore = threading.BoundedSemaphore(2)
-    app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_credentials=False, allow_methods=['GET', 'POST', 'PATCH'], allow_headers=['Authorization', 'Content-Type'])
+    app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_credentials=False, allow_methods=['GET', 'HEAD', 'POST', 'PATCH'], allow_headers=['Authorization', 'Content-Type'])
 
     @app.middleware('http')
     async def security_headers(request: Request, call_next):
@@ -53,6 +53,9 @@ def create_app(settings=None, initialize=False):
         response.headers['Referrer-Policy'] = 'no-referrer'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Robots-Tag'] = 'noindex, nofollow'
+        if request.url.path.startswith(('/ai/images/', '/ai/crops/')):
+            response.headers['CDN-Cache-Control'] = 'no-store'
+            response.headers['Vercel-CDN-Cache-Control'] = 'no-store'
         return response
 
     @app.exception_handler(ValidationError)

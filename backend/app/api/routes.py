@@ -10,6 +10,7 @@ from ..models import Case, Page, Entity, Session, AccessCode, Link, ImportRun, A
 from ..security.auth import require, login, digest, hasher
 from ..security.links import issue, consume
 from ..images.storage import original, render, thumbnail, allowed_path, validate_crop
+from ..images.payloads import read as read_payload
 from ..importers.catalog import run_import
 from ..importers.lock import import_active
 from ..schemas.messages import EntityInput, ReviewInput, Crop
@@ -47,9 +48,9 @@ def public_capabilities(request: Request):
         'service': 'drevo-api', 'api_version': request.app.version,
         'authentication': {'type': 'bearer_session', 'login': '/api/auth/login', 'code_in_url': False},
         'capabilities': ['reference_import', 'zip_import', 'protected_images', 'original_pixel_crops',
-                         'signed_images', 'revocation', 'research_proposals', 'github_exchange'],
+                         'signed_images', 'signed_image_head', 'temporary_image_payload', 'revocation', 'research_proposals', 'github_exchange'],
         'integration': {'github_configured': bool(request.app.state.settings.github_repo and request.app.state.settings.github_token),
-                        'chatgpt': 'PARTIAL', 'ordinary_chat_image_test': 'WORKING',
+                        'chatgpt': 'PARTIAL', 'ordinary_chat_image_test': 'TECHNICAL_FIXTURE_PASSED_REAL_SCAN_PENDING',
                         'github_chat_write': 'CLIENT_DEPENDENT'},
         'ai_instructions': '/ai/instructions.md',
     }
@@ -193,11 +194,14 @@ def edit_page(identifier: str, payload: PageUpdate, request: Request, role=write
 
 
 def image_response(settings, page, variant, params=None):
+    if params and '_payload' in params:
+        data = read_payload(settings, params)
+        return Response(data, media_type='image/jpeg', headers={'Content-Disposition': 'inline; filename="drevo-reading-copy.jpg"', 'X-Image-SHA256': params['_payload']['sha256']})
     if variant == 'original':
         return FileResponse(original(settings, page), media_type={'JPEG': 'image/jpeg', 'PNG': 'image/png', 'TIFF': 'image/tiff'}.get(page.format, 'application/octet-stream'), filename=page.filename, content_disposition_type='inline')
     if variant == 'thumbnail':
-        return FileResponse(thumbnail(settings, page), media_type='image/jpeg')
-    return Response(render(settings, page, variant, params), media_type='image/jpeg')
+        return FileResponse(thumbnail(settings, page), media_type='image/jpeg', filename='thumbnail.jpg', content_disposition_type='inline')
+    return Response(render(settings, page, variant, params), media_type='image/jpeg', headers={'Content-Disposition': 'inline; filename="drevo-reading-copy.jpg"'})
 
 
 @router.get('/api/v1/pages/{identifier}/image')
@@ -226,25 +230,36 @@ def crop_get(identifier: str, request: Request, x: int, y: int, width: int, heig
     return crop(identifier, Crop(x=x, y=y, width=width, height=height, output_max_width=output_max_width), request, role)
 
 
-@router.get('/ai/crops/{identifier}')
+@router.api_route('/ai/crops/{identifier}', methods=['GET', 'HEAD'])
 def ai_crop(identifier: str, request: Request, token: str = ''):
+    return signed_response(identifier, request, token, expected='crop')
+
+
+@router.api_route('/ai/images/{identifier}/payload/{token}.jpg', methods=['GET', 'HEAD'])
+def ai_payload(identifier: str, token: str, request: Request):
+    return signed_response(identifier, request, token, payload_only=True)
+
+
+def signed_response(identifier, request, token, expected=None, payload_only=False):
     if not token:
         raise HTTPException(403, 'Требуется подписанная ссылка')
     with request.app.state.factory() as db:
-        link = consume(db, request.app.state.secret, identifier, token)
-        if link.operation != 'crop':
+        link = consume(db, request.app.state.secret, identifier, token, count_hit=False)
+        if expected and link.operation != expected:
             raise HTTPException(403, 'Разрешение не относится к вырезке')
-        return image_response(request.app.state.settings, db.get(Page, identifier), 'crop', link.params)
+        if payload_only and '_payload' not in link.params:
+            raise HTTPException(403, 'Разрешение не относится к временному JPEG')
+        response = image_response(request.app.state.settings, db.get(Page, identifier), link.operation, link.params)
+        if request.method == 'GET':
+            consume(db, request.app.state.secret, identifier, token)
+        elif hasattr(response, 'body'):
+            response.body = b''  # Keep GET Content-Length; HEAD never transfers bytes or spends a hit.
+        return response
 
 
-@router.get('/ai/images/{identifier}')
+@router.api_route('/ai/images/{identifier}', methods=['GET', 'HEAD'])
 def ai_image(identifier: str, request: Request, token: str = ''):
-    if not token:
-        raise HTTPException(403, 'Требуется подписанная ссылка')
-    with request.app.state.factory() as db:
-        link = consume(db, request.app.state.secret, identifier, token)
-        page = db.get(Page, identifier)
-        return image_response(request.app.state.settings, page, link.operation, link.params)
+    return signed_response(identifier, request, token)
 
 
 @router.get('/api/entities')

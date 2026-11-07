@@ -7,6 +7,7 @@ from ..models import Page, Case, Entity, Message, AuditEvent
 from ..schemas.messages import PageRequest, InboxMessage, EntityInput
 from ..security.links import issue
 from ..images.storage import validate_crop
+from ..images.payloads import prepare as prepare_payload
 from ..services.entities import create_entity, validate_sources, serialize, index_entity, search
 
 OPERATIONS = {'create_record': 'record', 'add_person_mention': 'person_mention', 'save_transcription': 'transcription', 'add_evidence': 'evidence', 'propose_relationship': 'relationship', 'create_finding': 'finding', 'save_research_progress': 'research_task', 'create_person': 'person', 'create_claim': 'claim', 'save_annotation': 'annotation', 'create_hypothesis': 'hypothesis'}
@@ -69,6 +70,11 @@ def process(db, settings, secret, raw):
             elif model.operation == 'get_research_context':
                 exported = context(db, settings)
                 response['context'] = {'manifest': 'manifest.json', 'case_count': len(exported['cases']), 'entity_count': len(exported['entities']), 'integration_status': 'unverified', 'instruction': 'Читайте актуальные catalog, page_indexes и entity_shards из manifest.json; полный контекст разбит на файлы.'}
+            elif model.operation == 'get_image_payload':
+                response['image_payload'] = prepare_payload(db, settings, secret, model)
+            elif model.operation == 'renew_image_links' and (old := db.get(Message, str(model.renew_request_id))) and 'image_payload' in old.response:
+                renewed = PageRequest.model_validate({**old.response['image_payload']['request'], 'request_id': identifier})
+                response['image_payload'] = prepare_payload(db, settings, secret, renewed)
             else:
                 response['pages'] = page_response(db, settings, secret, model)
     except HTTPException as exc:

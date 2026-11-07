@@ -11,8 +11,9 @@ from ..security.links import key
 from ..research.protocol import process, context
 from .client import GitHubClient
 from ..schemas.messages import PageRequest, InboxMessage, EntityInput
+from ..images.payloads import cleanup as cleanup_payloads
 
-REQUEST_FOLDERS = {'pages', 'crops', 'search', 'research'}
+REQUEST_FOLDERS = {'pages', 'crops', 'search', 'research', 'images'}
 INBOX_FOLDERS = {'records', 'transcriptions', 'people', 'relationships', 'findings', 'evidence', 'progress', 'research-progress', 'claims', 'annotations', 'hypotheses'}
 
 
@@ -28,6 +29,8 @@ def sync_once(factory, settings, secret, client=None):
     owned = client is None
     client = client or GitHubClient(settings)
     try:
+        with factory() as db:
+            cleanup_payloads(db, settings)
         client.private_check()
         tree = client.tree()
         remote_shas = {item['path']: item['sha'] for item in tree.get('tree', []) if item.get('type') == 'blob'}
@@ -90,7 +93,10 @@ def sync_once(factory, settings, secret, client=None):
         with factory() as db:
             exported = context(db, settings)
         # Stable shards permit incremental updates: unchanged files are not committed again.
-        manifest = {'schema_version': '1.0', 'integration_status': 'unverified', 'catalog': 'outbox/research-context/catalog.json', 'entity_shards': [], 'studied_pages': 'outbox/research-context/studied-pages.json'}
+        manifest = {'schema_version': '1.0', 'integration_status': 'unverified', 'catalog': 'outbox/research-context/catalog.json', 'entity_shards': [], 'studied_pages': 'outbox/research-context/studied-pages.json',
+                    'image_delivery': {'operation': 'get_image_payload', 'requests': 'requests/images/', 'responses': 'responses/images/',
+                                       'transport': 'temporary_https_jpeg', 'base64_in_git': False, 'max_bytes': 2000000,
+                                       'instructions': '/ai/instructions.md', 'ordinary_chat_visual_test': 'PENDING'}}
         publish(manifest['studied_pages'], exported['studied_page_ids'])
         for case in exported['cases']:
             case['page_indexes'] = []

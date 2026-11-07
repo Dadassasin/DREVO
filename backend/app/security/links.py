@@ -73,7 +73,7 @@ def issue(db, settings, secret, page, operation='original', params=None):
     return {'link_id': link.id, 'url': f'{settings.public_api_url}/ai/{resource}/{page.id}?token={token}', 'expires': link.expires}
 
 
-def consume(db, secret, page_id, token):
+def consume(db, secret, page_id, token, *, count_hit=True):
     try:
         identifier, signed = token.split('.', 1)
     except ValueError:
@@ -94,8 +94,11 @@ def consume(db, secret, page_id, token):
         raise HTTPException(403, 'Выдача копий отключена')
     if link.params.get('_sha256') != page.sha256:
         raise HTTPException(403, 'Источник изменён после выдачи ссылки. Запросите новое разрешение.')
-    result = db.execute(update(Link).where(Link.id == identifier, Link.revoked == False, Link.hits < Link.max_hits).values(hits=Link.hits + 1))
-    if result.rowcount != 1:
+    if link.revoked or link.hits >= link.max_hits:
         raise HTTPException(403, 'Ссылка отозвана или достигнут лимит запросов')
-    db.commit()
+    if count_hit:
+        result = db.execute(update(Link).where(Link.id == identifier, Link.revoked == False, Link.hits < Link.max_hits).values(hits=Link.hits + 1))
+        if result.rowcount != 1:
+            raise HTTPException(403, 'Ссылка отозвана или достигнут лимит запросов')
+        db.commit()
     return link

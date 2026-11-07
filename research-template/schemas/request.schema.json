@@ -18,7 +18,8 @@
         "get_crop",
         "search",
         "get_research_context",
-        "renew_image_links"
+        "renew_image_links",
+        "get_image_payload"
       ],
       "title": "Operation",
       "type": "string"
@@ -74,7 +75,8 @@
       "enum": [
         "original",
         "preview",
-        "thumbnail"
+        "thumbnail",
+        "crop"
       ],
       "title": "Variant",
       "type": "string"
@@ -152,6 +154,13 @@
       ],
       "default": null,
       "title": "Renew Request Id"
+    },
+    "quality": {
+      "default": 90,
+      "maximum": 95,
+      "minimum": 75,
+      "title": "Quality",
+      "type": "integer"
     }
   },
   "required": [
